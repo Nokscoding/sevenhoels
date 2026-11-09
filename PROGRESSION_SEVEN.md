@@ -118,3 +118,13 @@ Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. I
 - Les avertissements Supabase sur les fonctions SECURITY DEFINER héritées et la protection de mots de passe compromis restent présents.
 - **Aucun déploiement Netlify ni nouvel EXE compilé.** Le workflow GitHub Actions Windows a précédemment échoué avant le démarrage des étapes : vérifier le compte/runner Actions avant de considérer l'installateur prêt.
 - Détails : `docs/ROLES_MODERATEUR_DIRECTION.md`.
+
+## 9 novembre 2026 — Livraison Windows portable de vérification (hors GitHub Actions)
+- Un programme Windows x64 autonome **Seven_Gestion_Windows.exe** a été compilé localement avec Go 1.23 (`GOOS=windows GOARCH=amd64`, interface Windows GUI), pour contourner l'échec des jobs GitHub Actions avant démarrage.
+- Il s'agit d'un **lanceur local distinct de l'application Electron de desktop/** : il embarque une interface web compacte Seven dans le binaire, démarre un serveur seulement sur `127.0.0.1` à port aléatoire, ouvre Microsoft Edge/Chrome en fenêtre application, et communique avec le même projet Supabase Seven.
+- Interface fonctionnelle préparée : 12 modules (dashboard, responsables, hôtels, demandes, séjours, chambres, employés, services, paiements, pointage, notifications, registre RFID) ; login Supabase Auth, navigation selon rôles et mode découverte visuel sans écritures réelles.
+- Réservations, check-in/out, chambres, rôles et autres mutations utilisent PostgREST/RPC/RLS existants. Tous les comptes Seven nécessitent encore une attribution officielle dans `seven_roles` (table toujours vide au moment du build).
+- Contrôles : `go test` OK, binaire `PE32+ Windows x86-64 GUI` reconnu, ZIP intègre, tests Chromium via Playwright sans erreurs JavaScript pour les 12 modules et formulaires principaux.
+- Fichiers de livraison générés dans l'environnement de conversation : `/mnt/data/Seven_Gestion_Windows.exe`, `/mnt/data/Seven_Gestion_Windows_Portable.zip`, `/mnt/data/Seven_Gestion_Windows_Source.zip` et `/mnt/data/Seven_Gestion_Apercu.png`. **Ces chemins sont propres à cette session**, ne pas inventer de liens dans d'autres tours sans vérification.
+- **Important : PAS UNE RELEASE FINALE**. Impossible de tester physiquement le binaire Windows ici, launcher non signé, RFID physique non programmé, offline transactionnel non livré, réservation instantanée services non livrée. Version source Go distincte non fusionnée dans GitHub ; l'ERP web/desktop Electron de GitHub reste la base canonique du projet.
+- En attente : compte Supabase Auth vérifié à attribuer au superviseur général, validation de l'exécutable sur PC Windows Seven, signature du programme, reprise de la compilation Electron et synchronisation des interfaces.
