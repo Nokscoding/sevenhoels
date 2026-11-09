@@ -9,5 +9,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Frame-Options = "DENY"
+    X-Robots-Tag = "noindex, nofollow"
 
 # Préserver la confidentialité des dossiers d'exploitation : seul public/ est publié.
