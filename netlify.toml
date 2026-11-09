@@ -1,0 +1,13 @@
+# Seven Hotels & Apartments — vitrine publique.
+# Le portail ERP doit utiliser un site Netlify distinct avec son propre publish directory.
+[build]
+  publish = "public"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"
+
+# Préserver la confidentialité des dossiers d'exploitation : seul public/ est publié.
