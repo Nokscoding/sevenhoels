@@ -10,14 +10,14 @@ function offline(){el("connectionState").textContent=navigator.onLine?"● En li
 window.addEventListener("online",offline);window.addEventListener("offline",offline);offline();
 function supervisor(){return state.roles.some(r=>r.role==="supervisor"&&r.active);}
 function currentRole(){return supervisor()?"supervisor":(state.roles.find(r=>r.hotel_id===state.hotelId)||{}).role||"reception";}
-function canManageAccess(){return supervisor()||currentRole()==='director';}
+function canManageAccess(){return supervisor()||['director','manager'].includes(currentRole());}
 function canManage(){return ["supervisor","director","manager"].includes(currentRole());}
 function canHandle(){return ["supervisor","director","manager","reception"].includes(currentRole());}
 function currentHotel(){return state.hotels.find(h=>h.id===state.hotelId);}
 function isValidUUID(v){return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);}
 function showLogin(msg){el("appShell").hidden=true;el("loginScreen").hidden=false;el("loginMessage").textContent=msg||"";}
 function roleNav(){document.querySelector('[data-view="requests"]').hidden=!canHandle();document.querySelector('[data-view="stays"]').hidden=!(canHandle()||currentRole()==="accountant");document.querySelector(".supervisor-link").hidden=!canManageAccess();}
-function showApp(){el("loginScreen").hidden=true;el("appShell").hidden=false;el("userAvatar").textContent=(state.user.email||"S")[0].toUpperCase();el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("hotelSwitcher").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");el("hotelSwitcher").value=state.hotelId;el("roleHotel").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");roleNav();el("roleSelect").querySelectorAll("option").forEach(o=>{o.hidden=!supervisor()&&(o.value==="supervisor"||o.value==="director");});if(!supervisor())el("roleSelect").value="manager";el("roleHotel").value=state.hotelId;el("roleHotel").disabled=!supervisor();el("serviceForm").hidden=!canManage();goto("dashboard");}
+function showApp(){el("loginScreen").hidden=true;el("appShell").hidden=false;el("userAvatar").textContent=(state.user.email||"S")[0].toUpperCase();el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("hotelSwitcher").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");el("hotelSwitcher").value=state.hotelId;el("roleHotel").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");roleNav();el("roleSelect").querySelectorAll("option").forEach(o=>{o.hidden=!supervisor()&&(o.value==="supervisor"||o.value==="director"||(currentRole()==="manager"&&o.value==="manager"));});if(!supervisor())el("roleSelect").value=currentRole()==="manager"?"reception":"manager";el("roleHotel").value=state.hotelId;el("roleHotel").disabled=!supervisor();el("serviceForm").hidden=!canManage();goto("dashboard");}
 async function bootstrap(){if(!sb){showLogin("La configuration d'accès au serveur est manquante.");return;}const auth=await sb.auth.getUser();if(auth.error||!auth.data.user){showLogin();return;}state.user=auth.data.user;const roles=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active").eq("user_id",state.user.id).eq("active",true);if(roles.error||!roles.data?.length){await sb.auth.signOut();state.user=null;showLogin("Ce compte n'a pas encore reçu d'autorisation. Contactez la supervision.");return;}state.roles=roles.data;
 const hotels=await sb.from("hotels").select("id,name,slug,active").eq("active",true).order("name");if(hotels.error){showLogin("Impossible de charger les établissements.");return;}state.hotels=supervisor()?hotels.data:hotels.data.filter(h=>state.roles.some(r=>r.hotel_id===h.id));if(!state.hotels.length){showLogin("Aucun établissement attribué.");return;}state.hotelId=state.hotels[0].id;showApp();await loadAll();}
 function goto(view){if(view==="access"&&!canManageAccess())return;if(view==="requests"&&!canHandle())return;if(view==="stays"&&!(canHandle()||currentRole()==="accountant"))return;state.view=view;document.querySelectorAll(".page").forEach(n=>n.classList.toggle("active",n.id===view+"Page"));document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b.dataset.view===view));el("pageTitle").textContent=names[view][0];el("pageDescription").textContent=names[view][1];el("breadcrumb").textContent=names[view][0].toUpperCase();el("serviceForm").hidden=!(view==="services"&&canManage());document.querySelector(".sidebar").classList.remove("open");}
@@ -96,8 +96,32 @@ function renderRoomTypes(){
 }
 
 function renderServices(){el("servicesTable").innerHTML=table(["Service","Type","Capacité","Publication"],state.services.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.kind)+'</td><td>'+esc(r.capacity)+'</td><td>'+ (r.active?"Visible":"Non publié") +'</td></tr>'));}
-function renderAttendance(){el("attendanceTable").innerHTML=table(["Entrée","Sortie","État"],state.attendance.slice().sort((a,b)=>new Date(b.clock_in)-new Date(a.clock_in)).map(r=>'<tr><td>'+dateDisplay(r.clock_in)+' '+new Date(r.clock_in).toLocaleTimeString("fr-FR")+'</td><td>'+(r.clock_out?new Date(r.clock_out).toLocaleTimeString("fr-FR"):"—")+'</td><td>'+(r.clock_out?"Terminé":"Présent")+'</td></tr>'));}
-function renderRoles(){if(!canManageAccess())return;el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement"],state.allRoles.map(r=>'<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc((state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Tous")+'</td></tr>'));}
+
+function renderAttendance(){
+ const rows=state.attendance.slice().sort((a,b)=>new Date(b.clock_in)-new Date(a.clock_in)).map(r=>{
+  const employee=(state.allRoles||[]).find(x=>x.user_id===r.user_id&&x.hotel_id===state.hotelId);
+  const person=employee?.full_name||(r.user_id===state.user?.id?"Mon pointage":"Employé");
+  return '<tr><td>'+esc(person)+'</td><td>'+esc(dateDisplay(r.clock_in))+' '+esc(new Date(r.clock_in).toLocaleTimeString("fr-FR"))+'</td><td>'+(r.clock_out?esc(new Date(r.clock_out).toLocaleTimeString("fr-FR")):"—")+'</td><td>'+(r.clock_out?"Terminé":"Présent")+'</td></tr>';
+ });
+ el("attendanceTable").innerHTML=table(["Employé","Entrée","Sortie","État"],rows);
+}
+function canRevokeRole(role){
+ if(role.user_id===state.user?.id)return false;
+ if(supervisor())return true;
+ if(role.hotel_id!==state.hotelId)return false;
+ if(currentRole()==="director")return ["manager","reception","housekeeping","accountant"].includes(role.role);
+ return currentRole()==="manager"&&["reception","housekeeping","accountant"].includes(role.role);
+}
+function renderRoles(){
+ if(!canManageAccess())return;
+ const visible=supervisor()?state.allRoles:(state.allRoles||[]).filter(r=>r.hotel_id===state.hotelId);
+ el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement","Action"],visible.map(r=>{
+  const hotel=(state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Tous";
+  const action=canRevokeRole(r)?'<button class="action-button action-danger" type="button" data-revoke="'+esc(r.id)+'">Désactiver</button>':"—";
+  return '<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc(hotel)+'</td><td>'+action+'</td></tr>';
+ }));
+}
+
 function renderRFID(){el("rfidTable").innerHTML=table(["Chambre","Carte (empreinte)","Délivrée","Révoquée"],state.rfid.map(r=>'<tr><td>'+esc((state.rooms.find(x=>x.id===r.room_id)||{}).number||"—")+'</td><td>'+esc(r.card_uid_hash.substring(0,10))+'…</td><td>'+dateDisplay(r.issued_at)+'</td><td>'+(r.revoked_at?"Oui":"Non")+'</td></tr>'));}
 
 function render(){
@@ -279,8 +303,21 @@ el("roomsTable").addEventListener("change",e=>{if(e.target.matches("[data-room]"
 el("serviceForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManage()||!navigator.onLine)return flash("Action impossible hors connexion ou sans autorisation.");const d=new FormData(e.target);const r=await sb.from("seven_service_resources").insert({hotel_id:state.hotelId,name:String(d.get("name")).trim(),kind:String(d.get("kind")),capacity:Number(d.get("capacity")),active:false});if(r.error)return flash(r.error.message);e.target.reset();flash("Espace enregistré, non publié tant que ses informations ne sont pas validées.");await loadAll();});
 el("clockIn").addEventListener("click",async()=>{if(!navigator.onLine)return flash("Pointage indisponible hors connexion pour le moment.");if(state.attendance.some(r=>r.user_id===state.user.id&&!r.clock_out))return flash("Vous avez déjà une présence en cours.");const r=await sb.from("seven_attendance").insert({user_id:state.user.id,hotel_id:state.hotelId});if(r.error)flash(r.error.message);else{flash("Entrée enregistrée.");await loadAll();}});
 el("clockOut").addEventListener("click",async()=>{if(!navigator.onLine)return flash("Pointage indisponible hors connexion pour le moment.");const shift=state.attendance.find(r=>r.user_id===state.user.id&&!r.clock_out);if(!shift)return flash("Aucune présence en cours.");const r=await sb.from("seven_attendance").update({clock_out:new Date().toISOString()}).eq("id",shift.id).eq("user_id",state.user.id);if(r.error)flash(r.error.message);else{flash("Sortie enregistrée.");await loadAll();}});
+el("accessTable").addEventListener("click",async e=>{
+ const btn=e.target.closest("[data-revoke]");
+ if(!btn||!canManageAccess()||!navigator.onLine)return;
+ const role=(state.allRoles||[]).find(r=>r.id===btn.dataset.revoke);
+ if(!role||!canRevokeRole(role))return flash("Vous ne pouvez pas désactiver ce compte.");
+ if(!window.confirm("Retirer l'accès de "+role.full_name+" à cet établissement ?"))return;
+ try{
+  const result=await sb.from("seven_roles").update({active:false}).eq("id",role.id).select("id").maybeSingle();
+  if(result.error)throw result.error;
+  if(!result.data)throw new Error("not_authorized");
+  flash("Accès désactivé.");await loadAll();
+ }catch(err){console.error(err);flash(readableError(err));}
+});
 el("roleSelect").addEventListener("change",()=>{el("roleHotelWrap").hidden=el("roleSelect").value==="supervisor"&&supervisor();});
-el("roleForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManageAccess()||!navigator.onLine)return flash("Droits insuffisants ou connexion indisponible.");const d=new FormData(e.target),user_id=String(d.get("user_id")).trim(),role=String(d.get("role"));if(!isValidUUID(user_id))return flash("L'identifiant utilisateur n'est pas un UUID valide.");const r=await sb.from("seven_roles").insert({user_id,role,hotel_id:role==="supervisor"?null:(supervisor()?String(d.get("hotel_id")):state.hotelId),full_name:String(d.get("full_name")).trim()});if(r.error)flash("Attribution impossible : "+r.error.message);else{flash("Accès enregistré.");e.target.reset();await loadAll();}});
+el("roleForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManageAccess()||!navigator.onLine)return flash("Droits insuffisants ou connexion indisponible.");const d=new FormData(e.target),user_id=String(d.get("user_id")).trim(),role=String(d.get("role"));if(!isValidUUID(user_id))return flash("L'identifiant utilisateur n'est pas un UUID valide.");if(currentRole()==="manager"&&!["reception","housekeeping","accountant"].includes(role))return flash("Vous pouvez attribuer uniquement des accès employés.");const r=await sb.from("seven_roles").insert({user_id,role,hotel_id:role==="supervisor"?null:(supervisor()?String(d.get("hotel_id")):state.hotelId),full_name:String(d.get("full_name")).trim()});if(r.error)flash("Attribution impossible : "+r.error.message);else{flash("Accès enregistré.");e.target.reset();await loadAll();}});
 el("mobileNav").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
 bootstrap().catch(e=>{console.error(e);showLogin("Service d'authentification indisponible.");});
 })();
