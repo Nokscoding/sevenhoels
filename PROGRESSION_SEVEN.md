@@ -66,3 +66,14 @@ Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. I
 - Contrôles statiques : syntaxe JS des deux modules publics OK ; trois pages hôtels avec 3 aperçus chacune ; page Apartments avec Coming Soon vérifiée dans le code.
 - **Netlify `sevenhotels` EXISTANT ENCORE NON ACTUALISÉ :** le connecteur Netlify disponible expose la consultation des sites mais pas une action de téléversement/déploiement. Son ancien déploiement est manuel et n'a pas de lien GitHub. Une action de liaison de dépôt depuis le dashboard Netlify reste nécessaire ; ne pas prétendre que la nouvelle version y est déjà en ligne.
 - Aperçu Vercel précédemment déployé : ancienne version sans les pages détaillées ; ne pas le présenter comme une vérification de la nouvelle version.
+
+## Développement opérationnel — 9 novembre 2026 (étape suivante)
+- Création de la branche `feature/seven-reservations-operational` à partir de `main`.
+- Migration `seven_atomic_stay_booking_and_access` appliquée à Supabase et enregistrée sous `supabase/migrations/` : anti-chevauchement GiST, création atomique de séjours à partir de demandes, refus, transitions check-in/check-out/annulation, états des chambres, droits de création des chambres et catégories, lecture de données personnelles limitée aux rôles métier.
+- Migration `seven_manager_staff_access` appliquée : le gérant gère les accès subalternes de son établissement, pas les directeurs/superviseurs.
+- Migration `seven_apartments_coming_soon_policy` appliquée : aucune demande publique pour les appartements avant l'ouverture.
+- ERP `erp/` : sélection d'une chambre réellement libre, calendrier de disponibilité des chambres, séjours, check-in/out, ajout de chambres et catégories, revue du pointage, désactivation et réactivation des employés.
+- Validations : syntaxe JS OK, références HTML présentes, base de données avec 15 chambres, 9 catégories, 1 réservation historique ; opérations de test effectuées en transaction ROLLBACK, aucune donnée fictive conservée.
+- **IMPORTANT** : le stock et les comptes historiques n'ont pas été supprimés. Les privilèges des administrateurs hérités doivent être audités avant une utilisation en production.
+- **Aucun déploiement Netlify**. L'ERP n'est pas encore mis à disposition des employés. Ne pas prétendre que le travail est visible sur les sites existants.
+- Voir `docs/FONCTIONNEMENT_RESERVATIONS.md` pour la description précise des transitions, limites et tests.
