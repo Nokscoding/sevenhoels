@@ -10,7 +10,8 @@
     "prepare:renderer": "node scripts/build.mjs",
     "start": "npm run prepare:renderer && electron .",
     "dist:win": "npm run prepare:renderer && electron-builder --win nsis portable",
-    "check": "node --check main.cjs && node --check preload.cjs && node --check offline.js && node --check scripts/build.mjs"
+    "check": "node --check main.cjs && node --check preload.cjs && node --check offline.js && node --check scripts/build.mjs",
+    "test": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0"
