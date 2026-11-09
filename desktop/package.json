@@ -31,7 +31,8 @@
       "main.cjs",
       "preload.cjs",
       "renderer/**/*",
-      "package.json"
+      "package.json",
+      "assets/seven.ico"
     ],
     "win": {
       "target": [
@@ -47,7 +48,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "assets/seven.ico"
     },
     "nsis": {
       "oneClick": false,
