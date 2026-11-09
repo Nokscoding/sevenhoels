@@ -463,8 +463,118 @@ el("accessTable").addEventListener("click",async e=>{
   await loadAll();
  }catch(err){console.error(err);flash(readableError(err));}
 });
-el("roleSelect").addEventListener("change",()=>{el("roleHotelWrap").hidden=el("roleSelect").value==="supervisor"&&supervisor();});
-el("roleForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManageAccess()||!navigator.onLine)return flash("Droits insuffisants ou connexion indisponible.");const d=new FormData(e.target),user_id=String(d.get("user_id")).trim(),role=String(d.get("role"));if(!isValidUUID(user_id))return flash("L'identifiant utilisateur n'est pas un UUID valide.");if(currentRole()==="manager"&&!["reception","housekeeping","accountant"].includes(role))return flash("Vous pouvez attribuer uniquement des accès employés.");const r=await sb.from("seven_roles").insert({user_id,role,hotel_id:role==="supervisor"?null:(supervisor()?String(d.get("hotel_id")):state.hotelId),full_name:String(d.get("full_name")).trim()});if(r.error)flash("Attribution impossible : "+r.error.message);else{flash("Accès enregistré.");e.target.reset();await loadAll();}});
+function bindRoleForm(selectId,hotelWrap,hotel){
+ el(selectId).addEventListener("change",()=>configureRoleSelect(selectId,hotelWrap,hotel));
+}
+bindRoleForm("roleSelect","roleHotelWrap","roleHotel");
+bindRoleForm("inviteRole","inviteHotelWrap","inviteHotel");
+el("roleForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!canManageAccess()||!navigator.onLine)return flash("Accès refusé ou connexion indisponible.");
+ const d=new FormData(e.target),user_id=String(d.get("user_id")||"").trim();
+ const role=String(d.get("role")||"");
+ if(!isValidUUID(user_id))return flash("Identifiant de compte invalide.");
+ if(!canAssignRole(role))return flash("Vous ne pouvez pas attribuer ce rôle.");
+ const hotel_id=globalRole(role)?null:(leadership()?String(d.get("hotel_id")||state.hotelId):state.hotelId);
+ if(!globalRole(role)&&!state.hotels.some(h=>h.id===hotel_id))return flash("Établissement invalide.");
+ try{
+  const result=await sb.from("seven_roles").insert({
+   user_id,role,hotel_id,full_name:String(d.get("full_name")||"").trim()
+  }).select("id").maybeSingle();
+  if(result.error)throw result.error;
+  if(!result.data)throw Error("not_authorized");
+  e.target.reset();
+  flash("Compte existant rattaché au rôle "+(roleNames[role]||role)+".");
+  await loadAll();
+  configureRoleSelect("roleSelect","roleHotelWrap","roleHotel");
+ }catch(error){console.error(error);flash(error.code==="23505"?"Cet accès existe déjà.":"Attribution impossible : "+readableError(error));}
+});
+el("inviteForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!canManageAccess()||!navigator.onLine)return flash("Accès refusé ou connexion indisponible.");
+ const data=new FormData(e.target);
+ const role=String(data.get("role")||"");
+ if(!canAssignRole(role))return flash("Vous n'avez pas le droit d'attribuer ce rôle.");
+ const hotel_id=globalRole(role)?null:(leadership()?String(data.get("hotel_id")||""):state.hotelId);
+ if(!globalRole(role)&&!state.hotels.some(h=>h.id===hotel_id))return flash("Établissement invalide.");
+ const email=String(data.get("email")||"").trim().toLowerCase();
+ const full_name=String(data.get("full_name")||"").trim();
+ if(!email.includes("@")||full_name.length<2)return flash("Renseignez un nom et une adresse e-mail valides.");
+ const button=el("inviteSubmit"),result=el("inviteResult");
+ button.disabled=true;result.textContent="Envoi de l'invitation en cours…";
+ try{
+  const response=await sb.functions.invoke("seven-invite-staff",{
+   body:{email,full_name,role,hotel_id}
+  });
+  if(response.error)throw response.error;
+  if(!response.data?.ok)throw Error(response.data?.error||"Invitation non créée");
+  result.textContent="Invitation envoyée à "+email+". Le collaborateur devra activer son compte.";
+  e.target.reset();
+  configureRoleSelect("inviteRole","inviteHotelWrap","inviteHotel");
+  await loadAll();
+ }catch(error){
+  console.error("Seven invitation failed",error);
+  result.textContent="Invitation impossible. Vérifiez l'autorisation du compte, le paramétrage des e-mails Supabase et l'adresse fournie.";
+ }finally{button.disabled=false;}
+});
+el("propertiesGrid").addEventListener("click",async e=>{
+ const b=e.target.closest("[data-select-property]");
+ if(!b||!leadership())return;
+ const hotel=state.hotels.find(x=>x.id===b.dataset.selectProperty);
+ if(!hotel)return;
+ state.hotelId=hotel.id;populateHotelSelectors();
+ el("userRole").textContent=roleNames[currentRole()];
+ await loadAll();goto("management");
+});
+el("propertyEditId").addEventListener("change",updatePropertyEditForm);
+el("propertyCreateForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!leadership()||!navigator.onLine)return flash("Cette action est réservée à la direction.");
+ const d=new FormData(e.target);
+ const slug=String(d.get("slug")||"").trim().toLowerCase();
+ if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return flash("Identifiant URL invalide.");
+ try{
+  const response=await sb.from("hotels").insert({
+   slug,name:String(d.get("name")||"").trim(),city:String(d.get("city")||"").trim(),
+   address:String(d.get("address")||"").trim()||null,
+   phone:String(d.get("phone")||"").trim()||null,
+   email:String(d.get("email")||"").trim()||null,
+   description:String(d.get("description")||"").trim()||null,active:false
+  }).select("id").single();
+  if(response.error)throw response.error;
+  e.target.reset();
+  await refreshHotelRoster(response.data.id);
+  await loadAll();
+  flash("Nouvel établissement créé. Il reste privé jusqu'à sa publication.");
+ }catch(error){
+  console.error(error);
+  flash(error.code==="23505"?"Cet identifiant d'établissement existe déjà.":"Création refusée : "+readableError(error));
+ }
+});
+el("propertyUpdateForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!leadership()||!navigator.onLine)return flash("Cette action est réservée à la direction.");
+ const d=new FormData(e.target);
+ const id=String(d.get("id")||"");
+ if(!state.hotels.some(h=>h.id===id))return flash("Établissement introuvable.");
+ if(id===state.hotels.find(h=>h.slug==="seven-apartments")?.id && d.get("active")){
+  // Apartments remain Coming Soon on the public website; this field does not
+  // enable reservations. Public site workflow must still be reviewed.
+ }
+ try{
+  const response=await sb.from("hotels").update({
+   name:String(d.get("name")||"").trim(),city:String(d.get("city")||"").trim(),
+   address:String(d.get("address")||"").trim()||null,
+   description:String(d.get("description")||"").trim()||null,
+   active:!!d.get("active")
+  }).eq("id",id).select("id").single();
+  if(response.error)throw response.error;
+  await refreshHotelRoster(id);
+  await loadAll();
+  flash("Établissement mis à jour.");
+ }catch(error){console.error(error);flash("Modification impossible : "+readableError(error));}
+});
+
 el("mobileNav").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
 window.SevenNotifications.init();
 window.addEventListener("online",()=>{if(state.user&&state.hotelId)loadAll();});
