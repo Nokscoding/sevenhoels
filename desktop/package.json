@@ -1,0 +1,60 @@
+{
+  "name": "seven-gestion-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Seven Hotels & Apartments — Gestion Windows",
+  "main": "main.cjs",
+  "author": "Seven Hotels & Apartments",
+  "license": "UNLICENSED",
+  "scripts": {
+    "prepare:renderer": "node scripts/build.mjs",
+    "start": "npm run prepare:renderer && electron .",
+    "dist:win": "npm run prepare:renderer && electron-builder --win nsis portable",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check offline.js && node --check scripts/build.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.49.4"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.25.12"
+  },
+  "build": {
+    "appId": "cd.sevenhotels.gestion",
+    "productName": "Seven Gestion",
+    "directories": {
+      "output": "../../release"
+    },
+    "asar": true,
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": null
+  }
+}
