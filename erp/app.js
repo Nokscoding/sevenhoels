@@ -115,10 +115,10 @@ function canRevokeRole(role){
 function renderRoles(){
  if(!canManageAccess())return;
  const visible=supervisor()?state.allRoles:(state.allRoles||[]).filter(r=>r.hotel_id===state.hotelId);
- el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement","Action"],visible.map(r=>{
+ el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement","Statut","Action"],visible.map(r=>{
   const hotel=(state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Tous";
-  const action=canRevokeRole(r)?'<button class="action-button action-danger" type="button" data-revoke="'+esc(r.id)+'">Désactiver</button>':"—";
-  return '<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc(hotel)+'</td><td>'+action+'</td></tr>';
+  const action=canRevokeRole(r)?'<button class="action-button action-danger" type="button" data-revoke="'+esc(r.id)+'">'+(r.active?"Désactiver":"Réactiver")+'</button>':"—";
+  return '<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc(hotel)+'</td><td>'+(r.active?"Actif":"Inactif")+'</td><td>'+action+'</td></tr>';
  }));
 }
 
@@ -146,7 +146,7 @@ async function loadAll(){
   if(hotel!==state.hotelId)return;
   Object.assign(state,{requests,rooms,roomTypes,stays,services,attendance,rfid});
   if(canManageAccess()){
-   const r=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active").eq("active",true);
+   const r=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active");
    state.allRoles=r.data||[];
   }
   render();
@@ -307,13 +307,15 @@ el("accessTable").addEventListener("click",async e=>{
  const btn=e.target.closest("[data-revoke]");
  if(!btn||!canManageAccess()||!navigator.onLine)return;
  const role=(state.allRoles||[]).find(r=>r.id===btn.dataset.revoke);
- if(!role||!canRevokeRole(role))return flash("Vous ne pouvez pas désactiver ce compte.");
- if(!window.confirm("Retirer l'accès de "+role.full_name+" à cet établissement ?"))return;
+ if(!role||!canRevokeRole(role))return flash("Vous ne pouvez pas modifier cet accès.");
+ const verb=role.active?"désactiver":"réactiver";
+ if(!window.confirm("Confirmer : "+verb+" l'accès de "+role.full_name+" ?"))return;
  try{
-  const result=await sb.from("seven_roles").update({active:false}).eq("id",role.id).select("id").maybeSingle();
+  const result=await sb.from("seven_roles").update({active:!role.active}).eq("id",role.id).select("id").maybeSingle();
   if(result.error)throw result.error;
   if(!result.data)throw new Error("not_authorized");
-  flash("Accès désactivé.");await loadAll();
+  flash(role.active?"Accès désactivé.":"Accès réactivé.");
+  await loadAll();
  }catch(err){console.error(err);flash(readableError(err));}
 });
 el("roleSelect").addEventListener("change",()=>{el("roleHotelWrap").hidden=el("roleSelect").value==="supervisor"&&supervisor();});
