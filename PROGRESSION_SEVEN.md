@@ -54,3 +54,15 @@ Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. I
 - **Contrôle navigateur effectué** : accueil chargé, quatre cartes établissements visibles, images chargées, boutons ouvrant le formulaire, fermeture correcte. Aucune demande transmise pendant le contrôle ; les flux de soumission réels restent à tester séparément.
 - Sites Netlify `sevenhotels` et `sevengestion` inchangés, ERP non publié.
 - Prévisualisation publique ne constitue pas un lancement commercial : photos d'ambiance, demandes de réservation non confirmées, inventaire encore incomplet.
+
+## Pages individuelles et préparation Netlify — 9 novembre 2026
+- Pages créées : `/hotels/7/` (Seven 7), `/hotels/47/` (Seven 47), `/hotels/71/` (Seven 71).
+- Chaque page dispose d'un visuel principal, d'une description, de trois aperçus de chambres avec images d'illustration, d'une galerie, des services et d'un formulaire de demande connecté à Supabase.
+- Les chambres réellement publiées par la direction s'afficheront automatiquement grâce au nouveau champ `room_types.website_published` (false par défaut) et à la politique de lecture publique limitée.
+- Page `/appartements/` : **COMING SOON**, sans formulaire ni possibilité de réservation des appartements.
+- Accueil : chaque carte ouvre maintenant son établissement, tandis que Seven Apartments ouvre la page d'annonce. Les appartements ne figurent plus parmi les établissements réservables.
+- Routes courtes Netlify dans `public/_redirects` : `/7`, `/47`, `/71`.
+- Configuration `netlify.toml` : seule l'arborescence `public/` sera publiée ; en-têtes de sécurité et exclusion de l'indexation pendant la prévisualisation.
+- Contrôles statiques : syntaxe JS des deux modules publics OK ; trois pages hôtels avec 3 aperçus chacune ; page Apartments avec Coming Soon vérifiée dans le code.
+- **Netlify `sevenhotels` EXISTANT ENCORE NON ACTUALISÉ :** le connecteur Netlify disponible expose la consultation des sites mais pas une action de téléversement/déploiement. Son ancien déploiement est manuel et n'a pas de lien GitHub. Une action de liaison de dépôt depuis le dashboard Netlify reste nécessaire ; ne pas prétendre que la nouvelle version y est déjà en ligne.
+- Aperçu Vercel précédemment déployé : ancienne version sans les pages détaillées ; ne pas le présenter comme une vérification de la nouvelle version.
