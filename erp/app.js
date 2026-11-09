@@ -160,18 +160,52 @@ function renderAttendance(){
 function canRevokeRole(role){
  if(role.user_id===state.user?.id)return false;
  if(supervisor())return true;
+ if(director())return role.role!=="supervisor";
  if(role.hotel_id!==state.hotelId)return false;
- if(currentRole()==="director")return ["manager","reception","housekeeping","accountant"].includes(role.role);
  return currentRole()==="manager"&&["reception","housekeeping","accountant"].includes(role.role);
 }
 function renderRoles(){
  if(!canManageAccess())return;
- const visible=supervisor()?state.allRoles:(state.allRoles||[]).filter(r=>r.hotel_id===state.hotelId);
+ const visible=leadership()?
+  (state.allRoles||[]).filter(r=>supervisor()||r.role!=="supervisor"):
+  (state.allRoles||[]).filter(r=>r.hotel_id===state.hotelId);
  el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement","Statut","Action"],visible.map(r=>{
-  const hotel=(state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Tous";
+  const hotel=(state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Toute la chaîne";
   const action=canRevokeRole(r)?'<button class="action-button action-danger" type="button" data-revoke="'+esc(r.id)+'">'+(r.active?"Désactiver":"Réactiver")+'</button>':"—";
   return '<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc(hotel)+'</td><td>'+(r.active?"Actif":"Inactif")+'</td><td>'+action+'</td></tr>';
  }));
+}
+function updatePropertyEditForm(){
+ const h=state.hotels.find(x=>x.id===el("propertyEditId").value);
+ if(!h)return;
+ el("propertyEditName").value=h.name||"";
+ el("propertyEditCity").value=h.city||"";
+ el("propertyEditAddress").value=h.address||"";
+ el("propertyEditDescription").value=h.description||"";
+ el("propertyEditActive").checked=!!h.active;
+}
+function renderProperties(){
+ if(!leadership())return;
+ el("propertiesGrid").innerHTML=state.hotels.map(h=>{
+  const selected=h.id===state.hotelId,active=!!h.active;
+  return '<article class="property-summary-card'+(selected?' selected':'')+'">'
+    +'<span class="property-summary-icon">7</span><div class="property-summary-content">'
+    +'<strong>'+esc(h.name)+'</strong><small>'+esc(h.city||"Ville à compléter")
+    +'</small><span class="property-summary-badge '+(active?'live':'inactive')+'">'+(active?'Publié':'Non publié')+'</span></div>'
+    +'<button type="button" class="action-button" data-select-property="'+esc(h.id)+'">'+(selected?"Établissement sélectionné":"Gérer cet hôtel ↗")+'</button></article>';
+ }).join("");
+}
+async function refreshHotelRoster(selectId){
+ const response=await sb.from("hotels")
+   .select("id,name,slug,city,address,phone,email,description,active")
+   .order("name");
+ if(response.error)throw response.error;
+ state.hotels=leadership()?response.data:response.data.filter(h=>h.active&&state.roles.some(r=>r.hotel_id===h.id));
+ if(!state.hotels.some(h=>h.id===selectId))
+   selectId=state.hotels.find(h=>h.active)?.id||state.hotels[0]?.id||"";
+ state.hotelId=selectId;
+ populateHotelSelectors();
+ renderProperties();
 }
 
 function renderRFID(){el("rfidTable").innerHTML=table(["Chambre","Carte (empreinte)","Délivrée","Révoquée"],state.rfid.map(r=>'<tr><td>'+esc((state.rooms.find(x=>x.id===r.room_id)||{}).number||"—")+'</td><td>'+esc(r.card_uid_hash.substring(0,10))+'…</td><td>'+dateDisplay(r.issued_at)+'</td><td>'+(r.revoked_at?"Oui":"Non")+'</td></tr>'));}
@@ -356,7 +390,7 @@ async function setRoomStatus(id,status){
 
 el("loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;el("signIn").disabled=true;el("loginMessage").textContent="";try{const r=await sb.auth.signInWithPassword({email:el("email").value.trim(),password:el("password").value});if(r.error)throw r.error;await bootstrap();}catch(err){el("loginMessage").textContent="Connexion impossible : vérifiez vos identifiants."; }finally{el("signIn").disabled=false;}});
 el("signOut").addEventListener("click",async()=>{window.SevenNotifications.stop();if(window.sevenDesktop)await window.sevenDesktop.clearSnapshot().catch(()=>{});await sb.auth.signOut();state.user=null;state.roles=[];showLogin();});
-el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;roleNav();await loadAll();});
+el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;el("inviteHotel").value=state.hotelId;roleNav();await loadAll();});
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.view)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.goto)));
 el("requestsTable").addEventListener("click",e=>{
