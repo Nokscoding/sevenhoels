@@ -13,12 +13,12 @@
     "check": "node --check main.cjs && node --check preload.cjs && node --check offline.js && node --check scripts/build.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.49.4"
+    "@supabase/supabase-js": "2.119.0"
   },
   "devDependencies": {
     "electron": "45.2.3",
     "electron-builder": "26.18.0",
-    "esbuild": "0.25.12"
+    "esbuild": "0.28.2"
   },
   "build": {
     "appId": "cd.sevenhotels.gestion",
