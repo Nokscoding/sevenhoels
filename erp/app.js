@@ -221,10 +221,60 @@ async function setRoomStatus(id,status){
 
 el("loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;el("signIn").disabled=true;el("loginMessage").textContent="";try{const r=await sb.auth.signInWithPassword({email:el("email").value.trim(),password:el("password").value});if(r.error)throw r.error;await bootstrap();}catch(err){el("loginMessage").textContent="Connexion impossible : vérifiez vos identifiants."; }finally{el("signIn").disabled=false;}});
 el("signOut").addEventListener("click",async()=>{await sb.auth.signOut();state.user=null;state.roles=[];showLogin();});
-el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;await loadAll();});
+el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;roleNav();await loadAll();});
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.view)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.goto)));
-el("requestsTable").addEventListener("change",e=>{if(e.target.matches("[data-request]"))setRequestStatus(e.target.dataset.request,e.target.value);});
+el("requestsTable").addEventListener("click",e=>{
+ const assign=e.target.closest("[data-allocate]"),decline=e.target.closest("[data-decline]");
+ if(assign)openAllocation(assign.dataset.allocate);
+ else if(decline)declineRequest(decline.dataset.decline);
+});
+el("staysTable").addEventListener("click",e=>{
+ const action=e.target.closest("[data-stay][data-action]");
+ if(action)transitionStay(action.dataset.stay,action.dataset.action);
+});
+el("allocationForm").addEventListener("submit",confirmAllocation);
+el("closeAllocation").addEventListener("click",()=>el("allocationDialog").close());
+el("allocationDialog").addEventListener("click",e=>{
+ if(e.target===el("allocationDialog"))el("allocationDialog").close();
+});
+el("availabilityDate").addEventListener("change",renderRooms);
+el("roomCreationForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!canManage()||!navigator.onLine)return flash("Action réservée à la direction, avec connexion.");
+ const d=new FormData(e.target),typeId=String(d.get("room_type_id")),type=state.roomTypes.find(t=>t.id===typeId&&t.active);
+ if(!type)return flash("Choisissez une catégorie valide.");
+ try{
+  const result=await sb.from("rooms").insert({
+   hotel_id:state.hotelId,room_type_id:typeId,number:String(d.get("number")).trim(),
+   floor:String(d.get("floor")||"").trim()||null,operational_status:"available",active:true
+  }).select("id").maybeSingle();
+  if(result.error)throw result.error;
+  if(!result.data)throw new Error("not_authorized");
+  e.target.reset();flash("La chambre a été ajoutée à votre établissement.");
+  await loadAll();
+ }catch(err){
+  console.error(err);
+  flash(err.code==="23505"?"Ce numéro de chambre existe déjà dans cet établissement.":readableError(err));
+ }
+});
+el("roomTypeForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!canManage()||!navigator.onLine)return flash("Action réservée à la direction, avec connexion.");
+ const d=new FormData(e.target);
+ try{
+  const result=await sb.from("room_types").insert({
+   hotel_id:state.hotelId,name:String(d.get("name")).trim(),
+   description:String(d.get("description")||"").trim()||null,
+   capacity:Number(d.get("capacity")),base_price:Number(d.get("base_price")),
+   currency:String(d.get("currency")),active:true,website_published:false
+  }).select("id").maybeSingle();
+  if(result.error)throw result.error;
+  if(!result.data)throw new Error("not_authorized");
+  e.target.reset();flash("Catégorie créée : elle restera privée jusqu'à publication.");
+  await loadAll();
+ }catch(err){console.error(err);flash(readableError(err));}
+});
 el("roomsTable").addEventListener("change",e=>{if(e.target.matches("[data-room]"))setRoomStatus(e.target.dataset.room,e.target.value);});
 el("serviceForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManage()||!navigator.onLine)return flash("Action impossible hors connexion ou sans autorisation.");const d=new FormData(e.target);const r=await sb.from("seven_service_resources").insert({hotel_id:state.hotelId,name:String(d.get("name")).trim(),kind:String(d.get("kind")),capacity:Number(d.get("capacity")),active:false});if(r.error)return flash(r.error.message);e.target.reset();flash("Espace enregistré, non publié tant que ses informations ne sont pas validées.");await loadAll();});
 el("clockIn").addEventListener("click",async()=>{if(!navigator.onLine)return flash("Pointage indisponible hors connexion pour le moment.");if(state.attendance.some(r=>r.user_id===state.user.id&&!r.clock_out))return flash("Vous avez déjà une présence en cours.");const r=await sb.from("seven_attendance").insert({user_id:state.user.id,hotel_id:state.hotelId});if(r.error)flash(r.error.message);else{flash("Entrée enregistrée.");await loadAll();}});
