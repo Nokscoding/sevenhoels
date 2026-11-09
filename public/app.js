@@ -13,8 +13,13 @@ function byId(id){return document.getElementById(id);}
 function escapeText(s){return String(s||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function imageUrl(id,w){return "https://images.unsplash.com/"+id+"?auto=format&fit=crop&w="+w+"&q=82";}
 function render(){
- byId("propertyGrid").innerHTML=properties.map(function(p,i){return '<article class="property-card"><div class="property-media"><img loading="lazy" src="'+imageUrl(p.img,800)+'" alt="Photographie d’ambiance pour '+escapeText(p.name)+'"><span class="property-tag">'+escapeText(p.type)+'</span></div><div class="property-body"><h3>'+escapeText(p.name)+'</h3><p>'+escapeText(p.desc)+'</p><button type="button" data-property="'+escapeText(p.slug)+'">Faire une demande ↗</button></div></article>';}).join("");
- var options=properties.map(function(p){return '<option value="'+escapeText(p.id)+'">'+escapeText(p.name)+'</option>';}).join("");
+ var routes={"seven-7":"./hotels/7/","seven-47":"./hotels/47/","seven-71":"./hotels/71/","seven-apartments":"./appartements/"};
+ byId("propertyGrid").innerHTML=properties.map(function(p){
+  var link=routes[p.slug]||"#etablissements";
+  var soon=p.slug==="seven-apartments";
+  return '<article class="property-card"><a class="property-media-link" href="'+link+'"><div class="property-media"><img loading="lazy" src="'+imageUrl(p.img,800)+'" alt="Photographie d’ambiance pour '+escapeText(p.name)+'"><span class="property-tag">'+(soon?'COMING SOON':escapeText(p.type))+'</span></div></a><div class="property-body"><h3><a href="'+link+'">'+escapeText(p.name)+'</a></h3><p>'+escapeText(soon?'Un nouvel art de séjourner, prochainement.':p.desc)+'</p><a class="property-card-cta" href="'+link+'">'+(soon?'Découvrir bientôt ↗':"Découvrir l'hôtel ↗")+'</a></div></article>';
+ }).join("");
+ var options=properties.filter(function(p){return p.slug!=="seven-apartments";}).map(function(p){return '<option value="'+escapeText(p.id)+'" '+(!p.id?'disabled':'')+'>'+escapeText(p.name)+'</option>';}).join("");
  byId("hotelSelect").innerHTML='<option value="">Sélectionner un établissement</option>'+options;
 }
 function setKind(kind){currentKind=kind;byId("kindSelect").value=kind;var stay=kind==="stay"||kind==="apartment";byId("endDateWrap").hidden=!stay;byId("endDate").required=stay;byId("timeWrap").hidden=stay;document.querySelectorAll("[data-quick]").forEach(function(b){b.classList.toggle("active",b.dataset.quick===kind);});}
