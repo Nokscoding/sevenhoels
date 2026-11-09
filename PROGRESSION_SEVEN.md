@@ -77,3 +77,15 @@ Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. I
 - **IMPORTANT** : le stock et les comptes historiques n'ont pas été supprimés. Les privilèges des administrateurs hérités doivent être audités avant une utilisation en production.
 - **Aucun déploiement Netlify**. L'ERP n'est pas encore mis à disposition des employés. Ne pas prétendre que le travail est visible sur les sites existants.
 - Voir `docs/FONCTIONNEMENT_RESERVATIONS.md` pour la description précise des transitions, limites et tests.
+
+## Notifications Seven — 9 novembre 2026
+- Nouvelle branche `feature/seven-notifications` : centre d'alertes ERP (cloche, compteur, liste, lecture, flux temps réel, rafraîchissement de secours).
+- Événements en base : nouvelle demande, réservation confirmée, check-in, chambre à nettoyer au check-out, chambre de nouveau prête, maintenance, paiement/remboursement, attribution/réactivation d'accès.
+- Alertes par établissement et rôle, superviseur global autorisé ; pas de nom ni téléphone du client dans la notification.
+- `public.notifications` : clé étrangère désormais sur `auth.users`, RLS par `auth.uid`, seule la colonne `read_at` peut être modifiée par l'utilisateur.
+- Publication Realtime existante déjà active, vérifiée.
+- Migrations Supabase appliquées : `seven_staff_notifications` et `seven_payment_notifications`.
+- Tests transactionnels ROLLBACK : permissions RLS et impossible de lire les alertes des collègues, ciblage Seven 47 sans fuite vers Seven 71, notifications paiement/remboursement ; aucun enregistrement de test conservé.
+- **Attention : zéro rôle actif dans `seven_roles`** : prévoir attribution officielle des rôles avant d'attendre de véritables alertes métier.
+- Les alertes du navigateur fonctionnent seulement lorsque l'ERP reste ouvert ; Web Push de fond, email, SMS et WhatsApp ne sont pas implémentés.
+- Pas de déploiement Netlify. Voir `docs/NOTIFICATIONS_SEVEN.md`.

@@ -37,3 +37,45 @@
 .panel .message-note{font-size:12px;color:#727870;line-height:1.6}
 @media(max-width:850px){.edit-panel .form-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.allocation-dialog{padding:22px}.modal-head h2{font-size:29px}.edit-panel .form-row{grid-template-columns:1fr}.edit-panel .form-row .wide{grid-column:auto}.availability-bar{align-items:start;flex-direction:column}td,th{padding:12px 9px}}
+
+/* Notifications - Seven Gestion */
+.notification-widget{position:relative;flex:none}
+.notification-bell{position:relative;width:42px;height:42px;display:grid;place-items:center;border:1px solid #e4e7e1;border-radius:9px;background:#fff;color:#262e28}
+.notification-bell:hover,.notification-bell[aria-expanded="true"]{color:#987347;background:#faf7ef;border-color:#cfb991}
+.notification-count{position:absolute;top:-7px;right:-7px;border-radius:12px;background:#b78a4b;color:#fff;min-width:18px;height:18px;padding:0 5px;font-size:10px;font-weight:700;display:grid;place-items:center}
+.notification-panel{position:absolute;z-index:40;right:-70px;top:53px;width:min(420px,calc(100vw - 28px));background:white;border:1px solid #e2e5df;box-shadow:0 24px 65px #141b1a30}
+.notification-panel-head{padding:23px 23px 14px;display:flex;justify-content:space-between;align-items:start;gap:16px}
+.notification-panel-head h2{font:400 27px Georgia;margin:8px 0 0}
+.notification-close{width:30px;height:30px;border:0;background:#f1f2ee;font-size:22px;display:grid;place-items:center}
+.notification-panel-tools{text-align:right;padding:0 23px 13px}
+.notification-panel-footer{border-top:1px solid #ebeee9;padding:14px 22px}
+.notification-panel-footer button{width:100%;background:#222b27;color:white;padding:13px;font-size:12px;border:0;font-weight:700}
+.notification-list{max-height:400px;overflow-y:auto;border-top:1px solid #e9ebe7}
+.notification-item{display:flex;text-align:left;align-items:flex-start;gap:12px;width:100%;padding:17px 22px;border:0;border-bottom:1px solid #eceeea;background:white;color:#252c27;cursor:pointer}
+.notification-item:hover{background:#faf9f5}
+.notification-item.is-unread{background:#faf7ef}
+.notification-item .notification-icon{width:34px;height:34px;flex:none;border-radius:7px;display:grid;place-items:center;background:#f0ede5;color:#a07d4a}
+.notification-item .notification-icon svg{width:18px;height:18px}
+.notification-copy{flex:1;min-width:0}
+.notification-title{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700;line-height:1.45;margin-bottom:5px}
+.notification-dot{width:6px;height:6px;flex:none;border-radius:50%;background:#b9894b}
+.notification-desc{font-size:12px;color:#69716c;line-height:1.7;white-space:normal}
+.notification-meta{font-size:10px;color:#9b9d96;display:block;margin-top:9px}
+.notification-empty{padding:42px 22px;text-align:center;color:#89918a;font-size:13px;line-height:1.7}
+.notification-list-page{max-height:none;border-top:1px solid #e7e9e3}
+.notification-list-page .notification-item{padding:20px}
+.notification-list-page .notification-title{font-size:14px}
+.notification-list-page .notification-desc{font-size:13px}
+.notification-list-page .notification-meta{font-size:11px}
+#notificationsSideCount[hidden],#notificationBellCount[hidden],#notificationPanel[hidden]{display:none!important}
+@media(max-width:700px){
+.topbar-right{gap:8px}
+.notification-panel{position:fixed;top:72px;right:10px;left:10px;width:auto;max-height:calc(100vh - 85px)}
+.notification-list{max-height:calc(100vh - 260px)}
+.notification-list-page{max-height:none}
+.notification-panel-head{padding:18px 18px 12px}
+.notification-panel-tools{padding:0 18px 12px}
+.notification-item{padding:16px 18px}
+#notificationsPage .panel-heading .inline-actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}
+#notificationsPage .panel-heading button{font-size:11px}
+}
