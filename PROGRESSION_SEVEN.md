@@ -89,3 +89,15 @@ Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. I
 - **Attention : zéro rôle actif dans `seven_roles`** : prévoir attribution officielle des rôles avant d'attendre de véritables alertes métier.
 - Les alertes du navigateur fonctionnent seulement lorsque l'ERP reste ouvert ; Web Push de fond, email, SMS et WhatsApp ne sont pas implémentés.
 - Pas de déploiement Netlify. Voir `docs/NOTIFICATIONS_SEVEN.md`.
+
+## 9 novembre 2026 — Seven Gestion web et Windows / Espace responsables
+- Branche `feature/seven-dual-platform-manager` : espace Responsables visible aux rôles `manager`, `director`, `supervisor`, avec données filtrées par établissement.
+- Vue responsables : demandes à traiter, arrivées du jour, chambres à préparer, personnel autorisé, état opérationnel et raccourcis vers les modules existants.
+- Interface web ERP modernisée via `erp/management.css` : sidebar, cartes, proportions, animations légères, affichage responsive.
+- `desktop/` : application Windows Electron utilisant les mêmes fichiers ERP que la version web, build local Supabase JS, fenêtre sécurisée, IPC minimal, icône Seven en 256px.
+- Première consultation hors connexion : aperçu local chiffré des chambres **sans informations clients**, lecture seule, cache effacé à la déconnexion explicite. Aucune opération de réservation/paiement hors ligne n'est encore validée ou synchronisée.
+- Build : `desktop/package.json`, `desktop/scripts/build.mjs`, tests de contrôle statique `desktop/scripts/smoke.mjs` et workflow `.github/workflows/seven-windows.yml` pour générer installateur et EXE portable.
+- Contrôles statiques : analyse syntaxique ERP / desktop OK, identifiants HTML présents et non dupliqués, rôles responsables et outils Windows branchés.
+- **Aucun build natif ou test d'installation Windows vérifié à ce stade**, car la machine d'exécution locale n'a pas accès aux téléchargements npm. Le workflow Windows GitHub doit compiler l'application.
+- **Pas de déploiement Netlify**. Ne pas prétendre que l'application est finalisée : invitation sécurisée, mode offline transactionnel, RFID, caisse, tests comptables restent à effectuer.
+- Guide technique de reprise : `docs/SEVEN_WEB_WINDOWS_RESPONSABLES.md` et `desktop/README.md`.
