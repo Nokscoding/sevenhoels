@@ -101,3 +101,20 @@ Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. I
 - **Aucun build natif ou test d'installation Windows vérifié à ce stade**, car la machine d'exécution locale n'a pas accès aux téléchargements npm. Le workflow Windows GitHub doit compiler l'application.
 - **Pas de déploiement Netlify**. Ne pas prétendre que l'application est finalisée : invitation sécurisée, mode offline transactionnel, RFID, caisse, tests comptables restent à effectuer.
 - Guide technique de reprise : `docs/SEVEN_WEB_WINDOWS_RESPONSABLES.md` et `desktop/README.md`.
+
+## 9 novembre 2026 — Modérateur / directeurs globaux / comptes par rôle
+- Branche `feature/seven-global-directors-access`.
+- Nouvelle hiérarchie : `supervisor` (modérateur) et `director` (directeur) sont des rôles **globaux** (`hotel_id=NULL`) ; `manager`, `reception`, `housekeeping`, `accountant` restent rattachés à un seul établissement par attribution.
+- Les directeurs peuvent consulter / gérer tous les établissements, créer des établissements inactifs, affecter des collaborateurs et créer des accès de direction. **Ils ne peuvent pas créer/modifier les modérateurs.** Le modérateur peut créer tous les accès.
+- Anciennes politiques `public.is_admin` et `public.can_access_hotel` recâblées sur les rôles Seven actifs, sans recours au statut `profiles.role=admin` historique. Attention : anciens comptes doivent recevoir une attribution Seven vérifiée.
+- Politiques de réservations, paiements et chambres resserrées : entretien sans accès aux données financières ou coordonnées des clients, gérant isolé dans son établissement. Modifications de chambre occupée / disponible contrôlées par le séjour.
+- Les alertes de tous les hôtels sont destinées aux modérateurs et directeurs globaux. Les équipes locales restent filtrées.
+- ERP partagé web + Windows : écran **Établissements** pour direction/modérateur, création et activation des établissements, sélection d'un établissement, écran **Comptes & autorisations**, invitation par e-mail et rattachement des comptes existants ; menus, indicateurs et vues conditionnels au rôle.
+- Edge Function Supabase `seven-invite-staff` déployée et active, JWT obligatoire, autorisation relue en base, client secret seulement côté serveur. Aucune invitation réelle envoyée pendant ces tests.
+- Tests SQL transactionnels réussis et annulés : directeur peut créer hôtel/directeur mais pas modérateur ; gérant ne voit pas chambres d'un autre hôtel ni ne crée établissement / directeur ; entretien ne peut lire réservations ou paiements ; notifications globales directeurs sans fuite vers autres gérants.
+- Vérification JavaScript et identifiants HTML, tests statiques Windows enrichis pour les nouvelles vues.
+- Les quatre hôtels, quinze chambres et une réservation historique sont conservés. `seven_roles` reste vide : **attribuer le premier modérateur au compte Auth vérifié** avant de pouvoir utiliser les nouveaux formulaires.
+- Nouvel établissement créé en mode inactif ; la page vitrine publique dédiée n'est pas encore générée automatiquement.
+- Les avertissements Supabase sur les fonctions SECURITY DEFINER héritées et la protection de mots de passe compromis restent présents.
+- **Aucun déploiement Netlify ni nouvel EXE compilé.** Le workflow GitHub Actions Windows a précédemment échoué avant le démarrage des étapes : vérifier le compte/runner Actions avant de considérer l'installateur prêt.
+- Détails : `docs/ROLES_MODERATEUR_DIRECTION.md`.
