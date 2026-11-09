@@ -191,8 +191,8 @@ function renderProperties(){
   return '<article class="property-summary-card'+(selected?' selected':'')+'">'
     +'<span class="property-summary-icon">7</span><div class="property-summary-content">'
     +'<strong>'+esc(h.name)+'</strong><small>'+esc(h.city||"Ville à compléter")
-    +'</small><span class="property-summary-badge '+(active?'live':'inactive')+'">'+(active?'Publié':'Non publié')+'</span></div>'
-    +'<button type="button" class="action-button" data-select-property="'+esc(h.id)+'">'+(selected?"Établissement sélectionné":"Gérer cet hôtel ↗")+'</button></article>';
+    +'</small><span class="property-summary-badge '+(active?'live':'inactive')+'">'+(active?'Actif':'Inactif')+'</span></div>'
+    +'<button type="button" class="action-button" data-select-property="'+esc(h.id)+'">'+(selected?"Établissement sélectionné":"Gérer cet établissement ↗")+'</button></article>';
  }).join("");
 }
 async function refreshHotelRoster(selectId){
@@ -557,10 +557,7 @@ el("propertyUpdateForm").addEventListener("submit",async e=>{
  const d=new FormData(e.target);
  const id=String(d.get("id")||"");
  if(!state.hotels.some(h=>h.id===id))return flash("Établissement introuvable.");
- if(id===state.hotels.find(h=>h.slug==="seven-apartments")?.id && d.get("active")){
-  // Apartments remain Coming Soon on the public website; this field does not
-  // enable reservations. Public site workflow must still be reviewed.
- }
+ 
  try{
   const response=await sb.from("hotels").update({
    name:String(d.get("name")||"").trim(),city:String(d.get("city")||"").trim(),
