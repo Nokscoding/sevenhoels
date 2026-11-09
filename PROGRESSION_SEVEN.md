@@ -46,3 +46,11 @@
 
 ## Reprise
 Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. Inspecter `public/`, `erp/` et `supabase/migrations/`. Commencer par les tests fonctionnels et l'activation du superviseur après confirmation du bon utilisateur Auth.
+
+## Déploiement d'aperçu — 9 novembre 2026
+- **Site vitrine uniquement** publié sur : https://seven-hotels-preview.vercel.app
+- Projet Vercel dédié : `seven-hotels-preview` (nks16), déploiement `dpl_FrWWNzfAJvAYSg1UoY6meeVmWeTQ`, état `READY`.
+- Fichiers déployés : `public/index.html`, `style.css`, `app.js`, `config.js`, `favicon.svg`, `assets/seven-mark.svg`, tirés de la branche `develop/seven-foundation`.
+- **Contrôle navigateur effectué** : accueil chargé, quatre cartes établissements visibles, images chargées, boutons ouvrant le formulaire, fermeture correcte. Aucune demande transmise pendant le contrôle ; les flux de soumission réels restent à tester séparément.
+- Sites Netlify `sevenhotels` et `sevengestion` inchangés, ERP non publié.
+- Prévisualisation publique ne constitue pas un lancement commercial : photos d'ambiance, demandes de réservation non confirmées, inventaire encore incomplet.
