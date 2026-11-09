@@ -1,0 +1,65 @@
+/* Seven Gestion — interface unifiée web et Windows.
+   Style adaptatif, animations réduites sur les appareils qui le demandent. */
+:root{--bg:#f6f7f5;--ink:#1d2522;--gold:#b99b69;--muted:#727c76;--border:#e5e9e3;--surface:#fff}
+body{background:#f6f7f5;color:var(--ink)}
+.sidebar{background:linear-gradient(173deg,#1c2623,#151e1d);border-right:1px solid #25342e}
+.sidebar-brand{padding-bottom:24px;border-bottom:1px solid #35423b;margin-bottom:30px}
+.sidebar-brand span{font-size:21px;letter-spacing:3px}
+.sidebar-brand small{letter-spacing:1.5px}
+.group-label{font-size:9px;letter-spacing:2.1px}
+.side-link{transition:background-color .18s,color .18s,transform .18s;border-radius:10px}
+.side-link:hover{background:#303d36;transform:translateX(3px)}
+.side-link.active{background:#35443a;box-shadow:inset 3px 0 #d7b77a}
+.topbar{min-height:78px;box-shadow:0 2px 14px #15261b07}
+.topbar select{border-radius:9px;background:#fbfcfa;color:#28352b;min-height:43px}
+.main{max-width:1520px}
+.welcome h1{letter-spacing:-1.2px}
+.welcome{margin-bottom:30px}
+.metric{border-radius:15px;box-shadow:0 8px 30px #15261b07;transition:transform .18s,box-shadow .18s}
+.metric:hover{transform:translateY(-2px);box-shadow:0 14px 34px #15261b10}
+.panel{border-radius:17px;box-shadow:0 9px 28px #10231a05}
+.primary,.outline,.btn-small,.action-button{border-radius:9px;transition:transform .18s,filter .18s}
+.primary:hover,.outline:hover,.btn-small:hover,.action-button:hover{transform:translateY(-1px);filter:brightness(.96)}
+.form-row input,.form-row select{border-radius:8px;background:#fff}
+.page.active{animation:sevenPageIn .25s ease-out both}
+@keyframes sevenPageIn{from{opacity:.2;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.management-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;padding:34px 37px;background:linear-gradient(124deg,#202d28 5%,#303b31 78%,#55513d);border-radius:19px;color:#fff;margin-bottom:23px;min-height:196px}
+.management-hero h2{font:400 clamp(31px,3vw,45px) Georgia;margin:14px 0}
+.management-hero p{font-size:13px;line-height:1.85;color:#d3ddd3;max-width:570px;margin:0}
+.management-hero .overline{color:#e2c48e}
+.management-role{font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:#e9d3ab;border:1px solid #917e5d;padding:11px 17px;border-radius:28px;flex:none}
+.management-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:17px;margin-bottom:25px}
+.management-card{display:flex;flex-direction:column;border:1px solid #e7eae4;border-radius:16px;background:#fff;padding:23px;min-height:160px;box-shadow:0 5px 18px #14231c05}
+.management-card>span{font-size:12px;color:#7b847d;font-weight:600}
+.management-card strong{font:400 45px Georgia;margin-top:19px;color:#25352d}
+.management-card small{font-size:11px;color:#929b93;margin-top:8px}
+.management-layout{display:grid;grid-template-columns:1.1fr .9fr;gap:22px}
+.management-layout .panel{margin-bottom:0}
+.management-layout .overline{color:#9f8151}
+.management-team-list{display:flex;flex-direction:column;gap:11px;margin-top:16px}
+.management-person{display:flex;align-items:center;gap:13px;padding:13px 12px;border:1px solid #edf0ea;border-radius:10px;background:#fbfcfa}
+.management-person-avatar{width:39px;height:39px;border-radius:12px;background:#ece7dc;color:#907144;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.management-person-main{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.management-person-main strong{font-size:12px;color:#343b35;overflow-wrap:anywhere}
+.management-person-main small{font-size:11px;color:#879087}
+.management-person-status{font-size:10px;color:#36795c;background:#e7f5ee;padding:7px 9px;border-radius:20px}
+.management-empty{padding:27px 12px;color:#818c83;text-align:center;font-size:13px;line-height:1.7}
+.management-health{display:flex;flex-direction:column;gap:15px;margin-top:28px}
+.management-health-label{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:8px}
+.management-health-label small{font-weight:400;color:#8b968c}
+.management-progress{height:7px;background:#ebefea;border-radius:100px;overflow:hidden}
+.management-progress>span{display:block;height:100%;border-radius:100px;background:#99ad9a;transition:width .3s}
+.management-progress.busy>span{background:#bea16e}
+.management-progress.attention>span{background:#b87a64}
+.management-actions{border-top:1px solid #eef0ec;margin-top:30px;padding-top:17px;display:grid;gap:8px}
+.management-actions button{display:flex;justify-content:space-between;gap:15px;align-items:center;text-align:left;border:1px solid #e9ede6;border-radius:9px;background:#fcfcfa;padding:13px 14px;color:#384c3f;font-size:12px;font-weight:700}
+.management-actions button:hover{background:#f1f5ef;border-color:#cdd8c8}
+.management-actions button span{color:#a08457}
+.management-summary{margin-top:24px;padding:22px 26px;border:1px solid #e5e9df;border-radius:12px;background:#f0f2ec}
+.management-summary p{font-size:12px;line-height:1.8;color:#68756c;margin:9px 0 0}
+.management-summary strong{color:#293b31}
+:focus-visible{outline:2px solid #b99b69;outline-offset:3px}
+@media(min-width:1100px){.sidebar{width:268px}.main{padding:44px 4.4% 90px}}
+@media(max-width:1100px){.management-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.management-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.management-hero{padding:28px 23px;align-items:flex-start;flex-direction:column}.management-role{margin-top:0}.management-cards{gap:10px}.management-card{padding:19px;min-height:139px}.management-card strong{font-size:36px}.management-layout .panel{padding:20px}.management-team-panel .panel-heading{display:flex;align-items:start;gap:14px}.management-layout .panel-heading h2{font-size:23px}.management-summary{padding:18px}.management-hero h2{font-size:37px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
