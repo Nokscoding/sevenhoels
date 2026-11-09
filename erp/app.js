@@ -2,25 +2,77 @@
 const cfg=window.SEVEN_CONFIG||{},sb=(cfg.url&&cfg.publishableKey&&window.supabase)?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
 const state={user:null,roles:[],hotels:[],hotelId:"",view:"dashboard",requests:[],rooms:[],roomTypes:[],stays:[],services:[],attendance:[],rfid:[],allocatingRequestId:null};
 const el=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const names={dashboard:["Vue d'ensemble","Toutes les informations essentielles de votre établissement."],requests:["Demandes de réservation","Suivez et traitez les demandes de vos visiteurs."],stays:["Séjours & arrivées","Gérez les confirmations, arrivées et départs des clients."],rooms:["Gestion des chambres","Suivez la disponibilité opérationnelle des chambres."],services:["Espaces et services","Gérez les salles, restaurants et installations."],attendance:["Présences","Enregistrez les entrées et sorties de votre équipe."],access:["Accès et permissions","Contrôlez les autorisations par établissement."],notifications:["Notifications","Suivez les événements importants de vos établissements."],management:["Espace responsables","Pilotage des équipes, de l’hôtel et des opérations."],rfid:["Cartes RFID","Registre et préparation de la gestion des accès."]};
+const names={dashboard:["Vue d'ensemble","Toutes les informations essentielles de votre établissement."],requests:["Demandes de réservation","Suivez et traitez les demandes de vos visiteurs."],stays:["Séjours & arrivées","Gérez les confirmations, arrivées et départs des clients."],rooms:["Gestion des chambres","Suivez la disponibilité opérationnelle des chambres."],services:["Espaces et services","Gérez les salles, restaurants et installations."],attendance:["Présences","Enregistrez les entrées et sorties de votre équipe."],access:["Accès et permissions","Contrôlez les autorisations par établissement."],notifications:["Notifications","Suivez les événements importants de vos établissements."],management:["Espace responsables","Pilotage des équipes, de l’hôtel et des opérations."],properties:["Établissements","Gérez les hôtels et appartements de la chaîne Seven."],rfid:["Cartes RFID","Registre et préparation de la gestion des accès."]};
 const statusNames={pending:"En attente",confirmed:"Confirmée",checked_in:"Occupée",checked_out:"Terminé",no_show:"Non-présenté",approved:"Approuvée",declined:"Refusée",cancelled:"Annulée",available:"Disponible",occupied:"Occupée",cleaning:"Nettoyage",maintenance:"Maintenance",out_of_service:"Hors service"};
-const roleNames={supervisor:"Supervision globale",director:"Direction",manager:"Responsable",reception:"Réception",housekeeping:"Entretien",accountant:"Comptabilité"};
+const roleNames={supervisor:"Modérateur général",director:"Directeur général",manager:"Gérant",reception:"Réceptionniste",housekeeping:"Entretien",accountant:"Comptabilité"};
 function flash(message){el("flash").textContent=message;el("flash").scrollIntoView({block:"nearest",behavior:"smooth"});}
 function offline(){el("connectionState").textContent=navigator.onLine?"● En ligne":"● Hors connexion";el("connectionState").classList.toggle("offline",!navigator.onLine);}
 window.addEventListener("online",offline);window.addEventListener("offline",offline);offline();
 function supervisor(){return state.roles.some(r=>r.role==="supervisor"&&r.active);}
-function currentRole(){return supervisor()?"supervisor":(state.roles.find(r=>r.hotel_id===state.hotelId)||{}).role||"reception";}
+function director(){return state.roles.some(r=>r.role==="director"&&r.active);}
+function leadership(){return supervisor()||director();}
+function currentRole(){return supervisor()?"supervisor":director()?"director":(state.roles.find(r=>r.hotel_id===state.hotelId&&r.active)||{}).role||"reception";}
 function canManageAccess(){return supervisor()||['director','manager'].includes(currentRole());}
 function canManage(){return ["supervisor","director","manager"].includes(currentRole());}
 function canHandle(){return ["supervisor","director","manager","reception"].includes(currentRole());}
 function currentHotel(){return state.hotels.find(h=>h.id===state.hotelId);}
 function isValidUUID(v){return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);}
 function showLogin(msg){window.SevenNotifications?.stop();el("appShell").hidden=true;el("loginScreen").hidden=false;el("loginMessage").textContent=msg||"";}
-function roleNav(){document.querySelector('[data-view="requests"]').hidden=!canHandle();document.querySelector('[data-view="stays"]').hidden=!(canHandle()||currentRole()==="accountant");document.querySelector(".supervisor-link").hidden=!canManageAccess();document.querySelector(".manager-link").hidden=!canManage();}
-function showApp(){el("loginScreen").hidden=true;el("appShell").hidden=false;el("userAvatar").textContent=(state.user.email||"S")[0].toUpperCase();el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("hotelSwitcher").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");el("hotelSwitcher").value=state.hotelId;el("roleHotel").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");roleNav();el("roleSelect").querySelectorAll("option").forEach(o=>{o.hidden=!supervisor()&&(o.value==="supervisor"||o.value==="director"||(currentRole()==="manager"&&o.value==="manager"));});if(!supervisor())el("roleSelect").value=currentRole()==="manager"?"reception":"manager";el("roleHotel").value=state.hotelId;el("roleHotel").disabled=!supervisor();el("serviceForm").hidden=!canManage();goto("dashboard");}
+function canAssignRole(role){
+ if(supervisor())return ["supervisor","director","manager","reception","housekeeping","accountant"].includes(role);
+ if(director())return ["director","manager","reception","housekeeping","accountant"].includes(role);
+ return currentRole()==="manager"&&["reception","housekeeping","accountant"].includes(role);
+}
+function globalRole(role){return role==="director"||role==="supervisor";}
+function roleNav(){
+ document.querySelector('[data-view="requests"]').hidden=!canHandle();
+ document.querySelector('[data-view="stays"]').hidden=!(canHandle()||currentRole()==="accountant");
+ document.querySelector(".supervisor-link").hidden=!canManageAccess();
+ document.querySelector(".manager-link").hidden=!canManage();
+ document.querySelector(".leadership-link").hidden=!leadership();
+ document.querySelector('[data-view="rfid"]').hidden=!["supervisor","director","manager","reception"].includes(currentRole());
+ document.querySelector('[data-view="services"]').hidden=!["supervisor","director","manager","reception"].includes(currentRole());
+}
+function configureRoleSelect(selectId,hotelWrapId,hotelSelectId){
+ const select=el(selectId);
+ select.querySelectorAll("option").forEach(opt=>{
+  opt.disabled=!canAssignRole(opt.value);
+  opt.hidden=!canAssignRole(opt.value);
+ });
+ if(!canAssignRole(select.value)){
+  const allowed=[...select.options].find(opt=>!opt.disabled);
+  select.value=allowed?.value||"";
+ }
+ const global=globalRole(select.value);
+ el(hotelWrapId).hidden=global;
+ el(hotelSelectId).disabled=global||!leadership();
+ if(!global)el(hotelSelectId).value=state.hotelId;
+}
+function populateHotelSelectors(){
+ const entries=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+(h.active?"":" · Non publié")+'</option>').join("");
+ el("hotelSwitcher").innerHTML=entries;
+ el("hotelSwitcher").value=state.hotelId;
+ for(const id of ["roleHotel","inviteHotel","propertyEditId"]){
+  el(id).innerHTML=entries;
+  el(id).value=state.hotelId;
+ }
+ configureRoleSelect("roleSelect","roleHotelWrap","roleHotel");
+ configureRoleSelect("inviteRole","inviteHotelWrap","inviteHotel");
+ updatePropertyEditForm();
+}
+function showApp(){
+ el("loginScreen").hidden=true;el("appShell").hidden=false;
+ el("userAvatar").textContent=(state.user.email||"S")[0].toUpperCase();
+ el("userRole").textContent=roleNames[currentRole()]||"Personnel";
+ populateHotelSelectors();
+ roleNav();
+ el("serviceForm").hidden=!canManage();
+ const landing=leadership()?"properties":currentRole()==="manager"?"management":currentRole()==="reception"?"requests":currentRole()==="housekeeping"?"rooms":"dashboard";
+ goto(landing);
+}
 async function bootstrap(){if(!sb){showLogin("La configuration d'accès au serveur est manquante.");return;}const auth=await sb.auth.getUser();if(auth.error||!auth.data.user){showLogin();return;}state.user=auth.data.user;const roles=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active").eq("user_id",state.user.id).eq("active",true);if(roles.error||!roles.data?.length){await sb.auth.signOut();state.user=null;showLogin("Ce compte n'a pas encore reçu d'autorisation. Contactez la supervision.");return;}state.roles=roles.data;
-const hotels=await sb.from("hotels").select("id,name,slug,active").eq("active",true).order("name");if(hotels.error){showLogin("Impossible de charger les établissements.");return;}state.hotels=supervisor()?hotels.data:hotels.data.filter(h=>state.roles.some(r=>r.hotel_id===h.id));if(!state.hotels.length){showLogin("Aucun établissement attribué.");return;}state.hotelId=state.hotels[0].id;showApp();await Promise.all([loadAll(),window.SevenNotifications.start({supabase:sb,user:state.user.id,properties:state.hotels,navigate:goto,flash})]);}
-function goto(view){if((view==="management"&&!canManage())||(view==="access"&&!canManageAccess()))return;if(view==="requests"&&!canHandle())return;if(view==="stays"&&!(canHandle()||currentRole()==="accountant"))view="rooms";state.view=view;document.querySelectorAll(".page").forEach(n=>n.classList.toggle("active",n.id===view+"Page"));document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b.dataset.view===view));el("pageTitle").textContent=names[view][0];el("pageDescription").textContent=names[view][1];el("breadcrumb").textContent=names[view][0].toUpperCase();el("serviceForm").hidden=!(view==="services"&&canManage());document.querySelector(".sidebar").classList.remove("open");}
+const hotels=await sb.from("hotels").select("id,name,slug,city,address,phone,email,description,active").order("name");if(hotels.error){showLogin("Impossible de charger les établissements.");return;}state.hotels=leadership()?hotels.data:hotels.data.filter(h=>h.active&&state.roles.some(r=>r.hotel_id===h.id));if(!state.hotels.length){showLogin("Aucun établissement attribué.");return;}state.hotelId=state.hotels[0].id;showApp();await Promise.all([loadAll(),window.SevenNotifications.start({supabase:sb,user:state.user.id,properties:state.hotels,navigate:goto,flash})]);}
+function goto(view){if((view==="management"&&!canManage())||(view==="access"&&!canManageAccess())||(view==="properties"&&!leadership()))return;if(view==="requests"&&!canHandle())return;if(view==="stays"&&!(canHandle()||currentRole()==="accountant"))view="rooms";state.view=view;document.querySelectorAll(".page").forEach(n=>n.classList.toggle("active",n.id===view+"Page"));document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b.dataset.view===view));el("pageTitle").textContent=names[view][0];el("pageDescription").textContent=names[view][1];el("breadcrumb").textContent=names[view][0].toUpperCase();el("serviceForm").hidden=!(view==="services"&&canManage());document.querySelector(".sidebar").classList.remove("open");}
 async function fetchFor(table,cols="*"){const q=sb.from(table).select(cols).eq("hotel_id",state.hotelId);const r=await q;if(r.error)throw r.error;return r.data||[];}
 function dateDisplay(v){return v?new Date(v).toLocaleDateString("fr-FR"):"—";}
 function table(headers,rows){if(!rows.length)return '<div class="empty">Aucune donnée à afficher pour cet établissement.</div>';return '<table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join("")+'</tr></thead><tbody>'+rows.join("")+'</tbody></table>';}
@@ -108,18 +160,52 @@ function renderAttendance(){
 function canRevokeRole(role){
  if(role.user_id===state.user?.id)return false;
  if(supervisor())return true;
+ if(director())return role.role!=="supervisor";
  if(role.hotel_id!==state.hotelId)return false;
- if(currentRole()==="director")return ["manager","reception","housekeeping","accountant"].includes(role.role);
  return currentRole()==="manager"&&["reception","housekeeping","accountant"].includes(role.role);
 }
 function renderRoles(){
  if(!canManageAccess())return;
- const visible=supervisor()?state.allRoles:(state.allRoles||[]).filter(r=>r.hotel_id===state.hotelId);
+ const visible=leadership()?
+  (state.allRoles||[]).filter(r=>supervisor()||r.role!=="supervisor"):
+  (state.allRoles||[]).filter(r=>r.hotel_id===state.hotelId);
  el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement","Statut","Action"],visible.map(r=>{
-  const hotel=(state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Tous";
+  const hotel=(state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Toute la chaîne";
   const action=canRevokeRole(r)?'<button class="action-button action-danger" type="button" data-revoke="'+esc(r.id)+'">'+(r.active?"Désactiver":"Réactiver")+'</button>':"—";
   return '<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc(hotel)+'</td><td>'+(r.active?"Actif":"Inactif")+'</td><td>'+action+'</td></tr>';
  }));
+}
+function updatePropertyEditForm(){
+ const h=state.hotels.find(x=>x.id===el("propertyEditId").value);
+ if(!h)return;
+ el("propertyEditName").value=h.name||"";
+ el("propertyEditCity").value=h.city||"";
+ el("propertyEditAddress").value=h.address||"";
+ el("propertyEditDescription").value=h.description||"";
+ el("propertyEditActive").checked=!!h.active;
+}
+function renderProperties(){
+ if(!leadership())return;
+ el("propertiesGrid").innerHTML=state.hotels.map(h=>{
+  const selected=h.id===state.hotelId,active=!!h.active;
+  return '<article class="property-summary-card'+(selected?' selected':'')+'">'
+    +'<span class="property-summary-icon">7</span><div class="property-summary-content">'
+    +'<strong>'+esc(h.name)+'</strong><small>'+esc(h.city||"Ville à compléter")
+    +'</small><span class="property-summary-badge '+(active?'live':'inactive')+'">'+(active?'Actif':'Inactif')+'</span></div>'
+    +'<button type="button" class="action-button" data-select-property="'+esc(h.id)+'">'+(selected?"Établissement sélectionné":"Gérer cet établissement ↗")+'</button></article>';
+ }).join("");
+}
+async function refreshHotelRoster(selectId){
+ const response=await sb.from("hotels")
+   .select("id,name,slug,city,address,phone,email,description,active")
+   .order("name");
+ if(response.error)throw response.error;
+ state.hotels=leadership()?response.data:response.data.filter(h=>h.active&&state.roles.some(r=>r.hotel_id===h.id));
+ if(!state.hotels.some(h=>h.id===selectId))
+   selectId=state.hotels.find(h=>h.active)?.id||state.hotels[0]?.id||"";
+ state.hotelId=selectId;
+ populateHotelSelectors();
+ renderProperties();
 }
 
 function renderRFID(){el("rfidTable").innerHTML=table(["Chambre","Carte (empreinte)","Délivrée","Révoquée"],state.rfid.map(r=>'<tr><td>'+esc((state.rooms.find(x=>x.id===r.room_id)||{}).number||"—")+'</td><td>'+esc(r.card_uid_hash.substring(0,10))+'…</td><td>'+dateDisplay(r.issued_at)+'</td><td>'+(r.revoked_at?"Oui":"Non")+'</td></tr>'));}
@@ -168,7 +254,7 @@ function render(){
  el("metricAvailable").textContent=state.rooms.filter(r=>r.active&&r.operational_status==="available"&&!stayBlocksRoom(r.id,date,tomorrow)).length;
  el("metricServices").textContent=state.services.length;
  renderRequests();renderStays();renderRooms();renderRoomTypes();
- renderServices();renderAttendance();renderRFID();if(canManageAccess())renderRoles();if(canManage())renderManagement();
+ renderServices();renderAttendance();renderRFID();if(canManageAccess())renderRoles();if(canManage())renderManagement();if(leadership())renderProperties();
 }
 async function rememberDesktopRooms(){
  const desktop=window.sevenDesktop;
@@ -304,7 +390,7 @@ async function setRoomStatus(id,status){
 
 el("loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;el("signIn").disabled=true;el("loginMessage").textContent="";try{const r=await sb.auth.signInWithPassword({email:el("email").value.trim(),password:el("password").value});if(r.error)throw r.error;await bootstrap();}catch(err){el("loginMessage").textContent="Connexion impossible : vérifiez vos identifiants."; }finally{el("signIn").disabled=false;}});
 el("signOut").addEventListener("click",async()=>{window.SevenNotifications.stop();if(window.sevenDesktop)await window.sevenDesktop.clearSnapshot().catch(()=>{});await sb.auth.signOut();state.user=null;state.roles=[];showLogin();});
-el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;roleNav();await loadAll();});
+el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;el("inviteHotel").value=state.hotelId;roleNav();await loadAll();});
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.view)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.goto)));
 el("requestsTable").addEventListener("click",e=>{
@@ -377,8 +463,115 @@ el("accessTable").addEventListener("click",async e=>{
   await loadAll();
  }catch(err){console.error(err);flash(readableError(err));}
 });
-el("roleSelect").addEventListener("change",()=>{el("roleHotelWrap").hidden=el("roleSelect").value==="supervisor"&&supervisor();});
-el("roleForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManageAccess()||!navigator.onLine)return flash("Droits insuffisants ou connexion indisponible.");const d=new FormData(e.target),user_id=String(d.get("user_id")).trim(),role=String(d.get("role"));if(!isValidUUID(user_id))return flash("L'identifiant utilisateur n'est pas un UUID valide.");if(currentRole()==="manager"&&!["reception","housekeeping","accountant"].includes(role))return flash("Vous pouvez attribuer uniquement des accès employés.");const r=await sb.from("seven_roles").insert({user_id,role,hotel_id:role==="supervisor"?null:(supervisor()?String(d.get("hotel_id")):state.hotelId),full_name:String(d.get("full_name")).trim()});if(r.error)flash("Attribution impossible : "+r.error.message);else{flash("Accès enregistré.");e.target.reset();await loadAll();}});
+function bindRoleForm(selectId,hotelWrap,hotel){
+ el(selectId).addEventListener("change",()=>configureRoleSelect(selectId,hotelWrap,hotel));
+}
+bindRoleForm("roleSelect","roleHotelWrap","roleHotel");
+bindRoleForm("inviteRole","inviteHotelWrap","inviteHotel");
+el("roleForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!canManageAccess()||!navigator.onLine)return flash("Accès refusé ou connexion indisponible.");
+ const d=new FormData(e.target),user_id=String(d.get("user_id")||"").trim();
+ const role=String(d.get("role")||"");
+ if(!isValidUUID(user_id))return flash("Identifiant de compte invalide.");
+ if(!canAssignRole(role))return flash("Vous ne pouvez pas attribuer ce rôle.");
+ const hotel_id=globalRole(role)?null:(leadership()?String(d.get("hotel_id")||state.hotelId):state.hotelId);
+ if(!globalRole(role)&&!state.hotels.some(h=>h.id===hotel_id))return flash("Établissement invalide.");
+ try{
+  const result=await sb.from("seven_roles").insert({
+   user_id,role,hotel_id,full_name:String(d.get("full_name")||"").trim()
+  }).select("id").maybeSingle();
+  if(result.error)throw result.error;
+  if(!result.data)throw Error("not_authorized");
+  e.target.reset();
+  flash("Compte existant rattaché au rôle "+(roleNames[role]||role)+".");
+  await loadAll();
+  configureRoleSelect("roleSelect","roleHotelWrap","roleHotel");
+ }catch(error){console.error(error);flash(error.code==="23505"?"Cet accès existe déjà.":"Attribution impossible : "+readableError(error));}
+});
+el("inviteForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!canManageAccess()||!navigator.onLine)return flash("Accès refusé ou connexion indisponible.");
+ const data=new FormData(e.target);
+ const role=String(data.get("role")||"");
+ if(!canAssignRole(role))return flash("Vous n'avez pas le droit d'attribuer ce rôle.");
+ const hotel_id=globalRole(role)?null:(leadership()?String(data.get("hotel_id")||""):state.hotelId);
+ if(!globalRole(role)&&!state.hotels.some(h=>h.id===hotel_id))return flash("Établissement invalide.");
+ const email=String(data.get("email")||"").trim().toLowerCase();
+ const full_name=String(data.get("full_name")||"").trim();
+ if(!email.includes("@")||full_name.length<2)return flash("Renseignez un nom et une adresse e-mail valides.");
+ const button=el("inviteSubmit"),result=el("inviteResult");
+ button.disabled=true;result.textContent="Envoi de l'invitation en cours…";
+ try{
+  const response=await sb.functions.invoke("seven-invite-staff",{
+   body:{email,full_name,role,hotel_id}
+  });
+  if(response.error)throw response.error;
+  if(!response.data?.ok)throw Error(response.data?.error||"Invitation non créée");
+  result.textContent="Invitation envoyée à "+email+". Le collaborateur devra activer son compte.";
+  e.target.reset();
+  configureRoleSelect("inviteRole","inviteHotelWrap","inviteHotel");
+  await loadAll();
+ }catch(error){
+  console.error("Seven invitation failed",error);
+  result.textContent="Invitation impossible. Vérifiez l'autorisation du compte, le paramétrage des e-mails Supabase et l'adresse fournie.";
+ }finally{button.disabled=false;}
+});
+el("propertiesGrid").addEventListener("click",async e=>{
+ const b=e.target.closest("[data-select-property]");
+ if(!b||!leadership())return;
+ const hotel=state.hotels.find(x=>x.id===b.dataset.selectProperty);
+ if(!hotel)return;
+ state.hotelId=hotel.id;populateHotelSelectors();
+ el("userRole").textContent=roleNames[currentRole()];
+ await loadAll();goto("management");
+});
+el("propertyEditId").addEventListener("change",updatePropertyEditForm);
+el("propertyCreateForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!leadership()||!navigator.onLine)return flash("Cette action est réservée à la direction.");
+ const d=new FormData(e.target);
+ const slug=String(d.get("slug")||"").trim().toLowerCase();
+ if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return flash("Identifiant URL invalide.");
+ try{
+  const response=await sb.from("hotels").insert({
+   slug,name:String(d.get("name")||"").trim(),city:String(d.get("city")||"").trim(),
+   address:String(d.get("address")||"").trim()||null,
+   phone:String(d.get("phone")||"").trim()||null,
+   email:String(d.get("email")||"").trim()||null,
+   description:String(d.get("description")||"").trim()||null,active:false
+  }).select("id").single();
+  if(response.error)throw response.error;
+  e.target.reset();
+  await refreshHotelRoster(response.data.id);
+  await loadAll();
+  flash("Nouvel établissement créé. Il reste privé jusqu'à sa publication.");
+ }catch(error){
+  console.error(error);
+  flash(error.code==="23505"?"Cet identifiant d'établissement existe déjà.":"Création refusée : "+readableError(error));
+ }
+});
+el("propertyUpdateForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!leadership()||!navigator.onLine)return flash("Cette action est réservée à la direction.");
+ const d=new FormData(e.target);
+ const id=String(d.get("id")||"");
+ if(!state.hotels.some(h=>h.id===id))return flash("Établissement introuvable.");
+ 
+ try{
+  const response=await sb.from("hotels").update({
+   name:String(d.get("name")||"").trim(),city:String(d.get("city")||"").trim(),
+   address:String(d.get("address")||"").trim()||null,
+   description:String(d.get("description")||"").trim()||null,
+   active:!!d.get("active")
+  }).eq("id",id).select("id").single();
+  if(response.error)throw response.error;
+  await refreshHotelRoster(id);
+  await loadAll();
+  flash("Établissement mis à jour.");
+ }catch(error){console.error(error);flash("Modification impossible : "+readableError(error));}
+});
+
 el("mobileNav").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
 window.SevenNotifications.init();
 window.addEventListener("online",()=>{if(state.user&&state.hotelId)loadAll();});

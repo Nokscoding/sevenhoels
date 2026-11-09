@@ -63,3 +63,28 @@ body{background:#f6f7f5;color:var(--ink)}
 @media(max-width:1100px){.management-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.management-layout{grid-template-columns:1fr}}
 @media(max-width:600px){.management-hero{padding:28px 23px;align-items:flex-start;flex-direction:column}.management-role{margin-top:0}.management-cards{gap:10px}.management-card{padding:19px;min-height:139px}.management-card strong{font-size:36px}.management-layout .panel{padding:20px}.management-team-panel .panel-heading{display:flex;align-items:start;gap:14px}.management-layout .panel-heading h2{font-size:23px}.management-summary{padding:18px}.management-hero h2{font-size:37px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Modération et direction : carte de la chaîne et invitations */
+.properties-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.property-summary-card{border:1px solid #e0e7dd;padding:21px;border-radius:15px;background:#fcfdfa;display:flex;align-items:flex-start;flex-direction:column;gap:18px;transition:box-shadow .18s,transform .18s}
+.property-summary-card:hover{transform:translateY(-2px);box-shadow:0 12px 30px #14231d12}
+.property-summary-card.selected{border-color:#c3ad80;background:#fbf8f1}
+.property-summary-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:#27362d;color:#e9c995;font:italic 800 31px Georgia,serif}
+.property-summary-content{display:flex;flex-direction:column;gap:7px;min-height:90px}
+.property-summary-content strong{font:400 24px Georgia,serif;color:#293a2e}
+.property-summary-content small{font-size:12px;color:#7b877d}
+.property-summary-badge{font-size:10px;padding:5px 10px;border-radius:14px;width:max-content}
+.property-summary-badge.live{background:#e7f1e7;color:#31764e}
+.property-summary-badge.inactive{background:#f6efe3;color:#987446}
+.property-summary-card .action-button{margin-top:auto;width:100%;text-align:center;min-height:42px}
+.advanced-access summary{font-size:13px;font-weight:700;color:#344838;cursor:pointer;padding:3px 0;list-style-position:inside}
+.advanced-access h2{margin:23px 0}
+.invite-result{margin-top:16px;color:#526b55;font-size:13px;line-height:1.7}
+.property-active-field{display:flex!important;align-items:center;flex-direction:row!important;gap:12px!important;margin:15px 0!important}
+.property-active-field input{width:18px;height:18px;accent-color:#759b79}
+#propertiesPage .edit-panel,#invitePanel{box-shadow:0 8px 32px #15261b08}
+#accessPage .form-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+#propertyCreateForm .wide,#propertyUpdateForm .wide{grid-column:span 2}
+#inviteSubmit:disabled{opacity:.55;cursor:wait}
+@media(max-width:1120px){.properties-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.properties-grid{grid-template-columns:1fr}#accessPage .form-row{grid-template-columns:1fr}#propertyCreateForm .wide,#propertyUpdateForm .wide{grid-column:auto}.property-summary-content{min-height:0}}
