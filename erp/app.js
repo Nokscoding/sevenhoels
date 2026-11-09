@@ -170,6 +170,29 @@ function render(){
  renderRequests();renderStays();renderRooms();renderRoomTypes();
  renderServices();renderAttendance();renderRFID();if(canManageAccess())renderRoles();if(canManage())renderManagement();
 }
+async function rememberDesktopRooms(){
+ const desktop=window.sevenDesktop;
+ if(!desktop||!state.user||!state.hotelId)return;
+ try{
+  const previous=await desktop.readSnapshot();
+  const sameAccount=previous?.userId===state.user.id;
+  const prior=sameAccount&&Array.isArray(previous.properties)?previous.properties:[];
+  const fresh={
+   id:state.hotelId,name:currentHotel()?.name||"Établissement",
+   rooms:state.rooms.map(room=>({
+    number:String(room.number||"").slice(0,25),
+    floor:String(room.floor||"").slice(0,30),
+    status:room.operational_status
+   }))
+  };
+  const properties=prior.filter(p=>p.id!==fresh.id).concat([fresh]);
+  await desktop.saveSnapshot({userId:state.user.id,properties});
+ }catch(error){
+  // Storage is optional. If encryption cannot be provided, never write plaintext.
+  console.info("Consultation hors ligne non mise à jour :",error?.message);
+ }
+}
+
 async function loadAll(){
  const hotel=state.hotelId;
  try{
@@ -186,6 +209,7 @@ async function loadAll(){
    state.allRoles=r.data||[];
   }
   render();
+  if(window.sevenDesktop)rememberDesktopRooms();
  }catch(e){
   console.error(e);flash(navigator.onLine?"Certaines données sont indisponibles. Vérifiez vos accès ou réessayez.":"Connexion indisponible : seules les données synchronisées peuvent être consultées.");
  }
@@ -280,7 +304,7 @@ async function setRoomStatus(id,status){
 }
 
 el("loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;el("signIn").disabled=true;el("loginMessage").textContent="";try{const r=await sb.auth.signInWithPassword({email:el("email").value.trim(),password:el("password").value});if(r.error)throw r.error;await bootstrap();}catch(err){el("loginMessage").textContent="Connexion impossible : vérifiez vos identifiants."; }finally{el("signIn").disabled=false;}});
-el("signOut").addEventListener("click",async()=>{window.SevenNotifications.stop();await sb.auth.signOut();state.user=null;state.roles=[];showLogin();});
+el("signOut").addEventListener("click",async()=>{window.SevenNotifications.stop();if(window.sevenDesktop)await window.sevenDesktop.clearSnapshot().catch(()=>{});await sb.auth.signOut();state.user=null;state.roles=[];showLogin();});
 el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;roleNav();await loadAll();});
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.view)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.goto)));
@@ -358,5 +382,6 @@ el("roleSelect").addEventListener("change",()=>{el("roleHotelWrap").hidden=el("r
 el("roleForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManageAccess()||!navigator.onLine)return flash("Droits insuffisants ou connexion indisponible.");const d=new FormData(e.target),user_id=String(d.get("user_id")).trim(),role=String(d.get("role"));if(!isValidUUID(user_id))return flash("L'identifiant utilisateur n'est pas un UUID valide.");if(currentRole()==="manager"&&!["reception","housekeeping","accountant"].includes(role))return flash("Vous pouvez attribuer uniquement des accès employés.");const r=await sb.from("seven_roles").insert({user_id,role,hotel_id:role==="supervisor"?null:(supervisor()?String(d.get("hotel_id")):state.hotelId),full_name:String(d.get("full_name")).trim()});if(r.error)flash("Attribution impossible : "+r.error.message);else{flash("Accès enregistré.");e.target.reset();await loadAll();}});
 el("mobileNav").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
 window.SevenNotifications.init();
+window.addEventListener("online",()=>{if(state.user&&state.hotelId)loadAll();});
 bootstrap().catch(e=>{console.error(e);showLogin("Service d'authentification indisponible.");});
 })();
