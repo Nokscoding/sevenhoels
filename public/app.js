@@ -1,0 +1,40 @@
+(function(){
+"use strict";
+var cfg=window.SEVEN_CONFIG||{},client=null;
+if(cfg.url&&cfg.publishableKey&&window.supabase){client=window.supabase.createClient(cfg.url,cfg.publishableKey);}
+var fallback=[
+ {id:"",slug:"seven-7",name:"Seven 7",type:"HÔTEL",desc:"Un séjour à votre rythme.",img:"photo-1566073771259-6a8506099945"},
+ {id:"",slug:"seven-47",name:"Seven 47",type:"HÔTEL",desc:"L'élégance au quotidien.",img:"photo-1611892440504-42a792e24d32"},
+ {id:"",slug:"seven-71",name:"Seven 71",type:"HÔTEL",desc:"Votre adresse pour une parenthèse.",img:"photo-1551882547-ff40c63fe5fa"},
+ {id:"",slug:"seven-apartments",name:"Seven Apartments",type:"APPARTEMENTS",desc:"Le confort comme à la maison.",img:"photo-1600607687939-ce8a6c25118c"}
+];
+var properties=fallback.slice(),currentKind="stay";
+function byId(id){return document.getElementById(id);}
+function escapeText(s){return String(s||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function imageUrl(id,w){return "https://images.unsplash.com/"+id+"?auto=format&fit=crop&w="+w+"&q=82";}
+function render(){
+ byId("propertyGrid").innerHTML=properties.map(function(p,i){return '<article class="property-card"><div class="property-media"><img loading="lazy" src="'+imageUrl(p.img,800)+'" alt="Photographie d’ambiance pour '+escapeText(p.name)+'"><span class="property-tag">'+escapeText(p.type)+'</span></div><div class="property-body"><h3>'+escapeText(p.name)+'</h3><p>'+escapeText(p.desc)+'</p><button type="button" data-property="'+escapeText(p.slug)+'">Faire une demande ↗</button></div></article>';}).join("");
+ var options=properties.map(function(p){return '<option value="'+escapeText(p.id)+'">'+escapeText(p.name)+'</option>';}).join("");
+ byId("hotelSelect").innerHTML='<option value="">Sélectionner un établissement</option>'+options;
+}
+function setKind(kind){currentKind=kind;byId("kindSelect").value=kind;var stay=kind==="stay"||kind==="apartment";byId("endDateWrap").hidden=!stay;byId("endDate").required=stay;byId("timeWrap").hidden=stay;document.querySelectorAll("[data-quick]").forEach(function(b){b.classList.toggle("active",b.dataset.quick===kind);});}
+function openBooking(kind,slug){setKind(kind||"stay");var hotel=properties.find(function(p){return p.slug===slug;});if(hotel)byId("hotelSelect").value=hotel.id;byId("bookingMessage").textContent="";byId("bookingMessage").className="";byId("bookingDialog").showModal();}
+document.querySelectorAll("[data-book]").forEach(function(b){b.addEventListener("click",function(){openBooking(b.dataset.book);});});
+document.querySelectorAll("[data-quick]").forEach(function(b){b.addEventListener("click",function(){setKind(b.dataset.quick);});});
+byId("quickBook").addEventListener("click",function(){openBooking(currentKind);});
+byId("propertyGrid").addEventListener("click",function(e){var b=e.target.closest("[data-property]");if(b)openBooking(b.dataset.property==="seven-apartments"?"apartment":"stay",b.dataset.property);});
+byId("closeDialog").addEventListener("click",function(){byId("bookingDialog").close();});
+byId("bookingDialog").addEventListener("click",function(e){if(e.target===this)this.close();});
+byId("kindSelect").addEventListener("change",function(){setKind(this.value);});
+byId("menuButton").addEventListener("click",function(){var n=byId("nav");n.classList.toggle("open");this.setAttribute("aria-expanded",n.classList.contains("open")?"true":"false");});
+document.querySelectorAll(".nav a").forEach(function(a){a.addEventListener("click",function(){byId("nav").classList.remove("open");});});
+var today=new Date();today.setHours(0,0,0,0);var iso=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+byId("startDate").min=iso;byId("endDate").min=iso;byId("startDate").addEventListener("change",function(){byId("endDate").min=this.value;if(byId("endDate").value&&byId("endDate").value<=this.value)byId("endDate").value="";});
+byId("bookingForm").addEventListener("submit",async function(e){e.preventDefault();var msg=byId("bookingMessage"),btn=byId("submitBooking"),form=new FormData(this);msg.textContent="";msg.className="";if(form.get("website"))return;if(!client){msg.textContent="Le service de réservation est momentanément indisponible. Merci de réessayer ultérieurement.";msg.className="error";return;}
+var kind=String(form.get("kind")),start=String(form.get("start_date")),end=String(form.get("end_date")||""),hid=String(form.get("hotel_id"));if(!hid){msg.textContent="Choisissez un établissement.";msg.className="error";return;}
+if((kind==="stay"||kind==="apartment")&&(!end||end<=start)){msg.textContent="La date de départ doit être postérieure à l'arrivée.";msg.className="error";return;}
+var payload={hotel_id:hid,kind:kind,guest_name:String(form.get("guest_name")||"").trim(),guest_phone:String(form.get("guest_phone")||"").trim(),guest_email:String(form.get("guest_email")||"").trim()||null,guests:Number(form.get("guests")),start_date:start,end_date:(kind==="stay"||kind==="apartment")?end:null,start_time:(kind==="stay"||kind==="apartment")?null:String(form.get("start_time")||"")||null,notes:String(form.get("notes")||"").trim()||null};
+btn.disabled=true;btn.textContent="Envoi en cours…";try{var res=await client.from("seven_booking_requests").insert(payload);if(res.error)throw res.error;this.reset();msg.textContent="Votre demande a bien été transmise. L'établissement vous contactera pour confirmer les disponibilités.";msg.className="success";}catch(err){console.error("Booking request error",err);msg.textContent="Impossible d'envoyer votre demande pour le moment. Vérifiez votre connexion et réessayez.";msg.className="error";}finally{btn.disabled=false;btn.textContent="Envoyer ma demande ↗";}});
+async function loadProperties(){if(!client)return;var r=await client.from("hotels").select("id,slug,name,active").eq("active",true);if(r.error||!r.data)return;properties=fallback.map(function(p){var h=r.data.find(function(v){return v.slug===p.slug;});return Object.assign({},p,{id:h?h.id:""});});render();}
+render();setKind("stay");loadProperties().catch(function(e){console.error(e);});
+})();
