@@ -1,0 +1,24 @@
+.seven-desktop{font-family:"Segoe UI",Arial,sans-serif}
+.seven-desktop .login-form{max-width:430px}
+.desktop-offline-button{width:100%;border:1px solid #d7dcd4;background:#f7f9f5;color:#4a6252;padding:14px 17px;border-radius:9px;margin:14px 0 18px;font-size:12px;font-weight:700}
+.desktop-offline-button:hover{background:#eaf1e9;border-color:#a6b8a8}
+.desktop-offline-dialog{border:0;border-radius:19px;width:min(790px,95vw);max-height:90vh;overflow:auto;padding:33px;box-shadow:0 35px 100px #15281b66}
+.desktop-offline-dialog::backdrop{background:#0a1510ad;backdrop-filter:blur(5px)}
+.desktop-offline-head{display:flex;align-items:start;justify-content:space-between;gap:20px}
+.desktop-offline-head h2{font:400 37px Georgia,serif;color:#23392d;margin:12px 0 20px}
+.desktop-offline-head button{width:38px;height:38px;border:0;border-radius:11px;background:#eef1eb;font-size:26px}
+.desktop-offline-note{color:#667c6d;font-size:13px;line-height:1.8;background:#f1f5ef;border-radius:10px;padding:16px 19px}
+.desktop-offline-data{margin:23px 0}
+.desktop-offline-time{font-size:11px;color:#959c94}
+.desktop-offline-hotel{border:1px solid #e7ede5;border-radius:14px;padding:20px;margin:16px 0}
+.desktop-offline-hotel h3{font:400 27px Georgia,serif;margin:0 0 17px}
+.desktop-offline-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.desktop-offline-stat{border-radius:10px;background:#f5f7f3;padding:13px 10px}
+.desktop-offline-stat strong{display:block;font:400 28px Georgia,serif;color:#394e3c}
+.desktop-offline-stat small{display:block;font-size:10px;color:#66756b;margin-top:6px}
+.desktop-offline-roomlist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:15px}
+.desktop-offline-room{display:flex;justify-content:space-between;align-items:center;gap:9px;background:#fafbf8;border:1px solid #edf0e9;border-radius:7px;padding:10px 11px}
+.desktop-offline-room span{font-size:12px;font-weight:700}
+.desktop-offline-room small{color:#788b79;font-size:10px}
+.desktop-offline-foot,.desktop-offline-empty{font-size:12px;line-height:1.7;color:#8b948d}
+@media(max-width:650px){.desktop-offline-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.desktop-offline-roomlist{grid-template-columns:repeat(2,minmax(0,1fr))}.desktop-offline-dialog{padding:20px}}
