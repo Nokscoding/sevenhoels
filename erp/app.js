@@ -99,10 +99,126 @@ function renderServices(){el("servicesTable").innerHTML=table(["Service","Type",
 function renderAttendance(){el("attendanceTable").innerHTML=table(["Entrée","Sortie","État"],state.attendance.slice().sort((a,b)=>new Date(b.clock_in)-new Date(a.clock_in)).map(r=>'<tr><td>'+dateDisplay(r.clock_in)+' '+new Date(r.clock_in).toLocaleTimeString("fr-FR")+'</td><td>'+(r.clock_out?new Date(r.clock_out).toLocaleTimeString("fr-FR"):"—")+'</td><td>'+(r.clock_out?"Terminé":"Présent")+'</td></tr>'));}
 function renderRoles(){if(!canManageAccess())return;el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement"],state.allRoles.map(r=>'<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc((state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Tous")+'</td></tr>'));}
 function renderRFID(){el("rfidTable").innerHTML=table(["Chambre","Carte (empreinte)","Délivrée","Révoquée"],state.rfid.map(r=>'<tr><td>'+esc((state.rooms.find(x=>x.id===r.room_id)||{}).number||"—")+'</td><td>'+esc(r.card_uid_hash.substring(0,10))+'…</td><td>'+dateDisplay(r.issued_at)+'</td><td>'+(r.revoked_at?"Oui":"Non")+'</td></tr>'));}
-function render(){el("metricPending").textContent=state.requests.filter(r=>r.status==="pending").length;el("metricRooms").textContent=state.rooms.length;el("metricAvailable").textContent=state.rooms.filter(r=>r.operational_status==="available").length;el("metricServices").textContent=state.services.length;renderRequests();renderRooms();renderServices();renderAttendance();renderRFID();if(canManageAccess())renderRoles();}
-async function loadAll(){try{const [requests,rooms,services,attendance,rfid]=await Promise.all([fetchFor("seven_booking_requests"),fetchFor("rooms"),fetchFor("seven_service_resources"),fetchFor("seven_attendance"),fetchFor("seven_rfid_cards")]);Object.assign(state,{requests,rooms,services,attendance,rfid});if(canManageAccess()){const roles=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active").eq("active",true);state.allRoles=roles.data||[];}render();}catch(e){console.error(e);flash(navigator.onLine?"Impossible de charger certaines données. Vérifiez vos autorisations et réessayez.":"Connexion indisponible. Les modifications nécessitent le réseau.");}}
-async function setRequestStatus(id,status){if(!canHandle())return;const prev=state.requests.find(r=>r.id===id);if(!prev||!navigator.onLine){flash("Vous devez être en ligne pour modifier une réservation.");return;}if(!confirm("Modifier le statut de la demande ?")){render();return;}const r=await sb.from("seven_booking_requests").update({status}).eq("id",id).eq("hotel_id",state.hotelId);if(r.error){flash("Modification refusée : "+r.error.message);}else{flash("Statut enregistré.");await loadAll();}}
-async function setRoomStatus(id,status){if(!navigator.onLine)return flash("Connexion nécessaire pour modifier une chambre.");const r=await sb.from("rooms").update({operational_status:status}).eq("id",id).eq("hotel_id",state.hotelId);if(r.error){flash(r.error.message);}else{flash("Chambre mise à jour.");await loadAll();}}
+
+function render(){
+ const date=todayLocal(),tomorrow=datePlusOne(date);
+ const pending=state.requests.filter(r=>r.status==="pending").length;
+ el("metricPending").textContent=pending;
+ el("metricRooms").textContent=state.rooms.length;
+ el("metricAvailable").textContent=state.rooms.filter(r=>r.active&&r.operational_status==="available"&&!stayBlocksRoom(r.id,date,tomorrow)).length;
+ el("metricServices").textContent=state.services.length;
+ renderRequests();renderStays();renderRooms();renderRoomTypes();
+ renderServices();renderAttendance();renderRFID();if(canManageAccess())renderRoles();
+}
+async function loadAll(){
+ const hotel=state.hotelId;
+ try{
+  const [requests,rooms,roomTypes,stays,services,attendance,rfid]=await Promise.all([
+    fetchFor("seven_booking_requests"),fetchFor("rooms"),
+    fetchFor("room_types"),fetchFor("reservations"),
+    fetchFor("seven_service_resources"),fetchFor("seven_attendance"),
+    fetchFor("seven_rfid_cards")
+  ]);
+  if(hotel!==state.hotelId)return;
+  Object.assign(state,{requests,rooms,roomTypes,stays,services,attendance,rfid});
+  if(canManageAccess()){
+   const r=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active").eq("active",true);
+   state.allRoles=r.data||[];
+  }
+  render();
+ }catch(e){
+  console.error(e);flash(navigator.onLine?"Certaines données sont indisponibles. Vérifiez vos accès ou réessayez.":"Connexion indisponible : seules les données synchronisées peuvent être consultées.");
+ }
+}
+function readableError(e){
+ const names={
+  request_not_found:"Demande introuvable.",
+  request_not_pending:"Cette demande a déjà été traitée.",
+  room_not_found_in_hotel:"Cette chambre ne fait pas partie de l'établissement.",
+  room_not_ready_today:"Cette chambre n'est pas prête pour une arrivée aujourd'hui.",
+  room_out_of_service:"Cette chambre est indisponible (maintenance ou hors service).",
+  room_unavailable:"Cette chambre est déjà réservée sur ces dates.",
+  capacity_exceeded:"La capacité de cette chambre est insuffisante.",
+  invalid_stay_dates:"Dates de séjour invalides.",
+  reservation_not_found:"Séjour introuvable.",
+  not_confirmed:"Seule une réservation confirmée peut être enregistrée à l'arrivée.",
+  not_checked_in:"Le client n'est pas enregistré comme présent.",
+  outside_stay_dates:"L'arrivée doit correspondre aux dates du séjour.",
+  room_not_ready:"La chambre doit être prête avant le check-in.",
+  cannot_cancel_active_stay:"Un séjour déjà commencé doit être clôturé via check-out.",
+  not_authorized:"Vous n'avez pas les autorisations nécessaires.",
+  guest_still_checked_in:"La chambre est encore occupée par un client."
+ };
+ if(e?.code==="23P01")return "Cette chambre a été réservée par quelqu'un d'autre. Actualisez les disponibilités.";
+ return names[e?.message]||"Opération impossible. Vérifiez les informations et réessayez.";
+}
+function openAllocation(id){
+ if(!canHandle()||!navigator.onLine){flash("Une connexion est nécessaire pour confirmer les réservations.");return;}
+ const req=state.requests.find(r=>r.id===id);
+ if(!req||req.status!=="pending"||req.kind!=="stay")return flash("Cette demande ne peut plus être attribuée.");
+ state.allocatingRequestId=id;
+ const options=roomOptionsFor(req).sort((a,b)=>String(a.number).localeCompare(String(b.number)));
+ const select=el("allocationRoom"),message=el("allocationMessage");
+ select.innerHTML='<option value="">Sélectionner une chambre</option>'+options.map(room=>{
+  const type=state.roomTypes.find(t=>t.id===room.room_type_id);
+  return '<option value="'+esc(room.id)+'">N° '+esc(room.number)+' · '+esc(type?.name||"Chambre")+' · '+esc(money(type?.base_price||0,type?.currency||"USD"))+' / nuit</option>';
+ }).join("");
+ el("allocationSummary").innerHTML='<strong>'+esc(req.guest_name)+'</strong><div>Du '+esc(req.start_date)+' au '+esc(req.end_date)+' · '+esc(req.guests)+' personne(s)</div><div>'+esc(currentHotel()?.name||"Établissement")+'</div>';
+ message.textContent=options.length?"":"Aucune chambre disponible et adaptée à cette demande. Vérifiez les dates ou l'inventaire.";
+ el("confirmAllocation").disabled=!options.length;
+ el("allocationDialog").showModal();
+}
+async function confirmAllocation(e){
+ e.preventDefault();
+ const id=state.allocatingRequestId,roomId=el("allocationRoom").value;
+ if(!id||!roomId||!navigator.onLine)return;
+ const button=el("confirmAllocation");button.disabled=true;button.textContent="Confirmation…";
+ try{
+  const res=await sb.rpc("seven_accept_booking_request",{p_request_id:id,p_room_id:roomId});
+  if(res.error)throw res.error;
+  el("allocationDialog").close();
+  flash("Réservation "+(res.data?.reference||"")+" confirmée. La chambre est bloquée sur ces dates.");
+  await loadAll();
+ }catch(e){
+  console.error("Allocation failed",e);
+  el("allocationMessage").textContent=readableError(e);
+  await loadAll();
+ }finally{button.disabled=false;button.textContent="Confirmer la réservation";}
+}
+async function declineRequest(id){
+ if(!canHandle()||!navigator.onLine)return flash("Connexion nécessaire.");
+ const reason=window.prompt("Motif du refus (facultatif) :", "");
+ if(reason===null)return;
+ try{
+  const r=await sb.rpc("seven_decline_booking_request",{p_request_id:id,p_reason:reason||null});
+  if(r.error)throw r.error;
+  flash("Demande refusée.");await loadAll();
+ }catch(e){console.error(e);flash(readableError(e));}
+}
+async function transitionStay(id,action){
+ if(!canHandle()||!navigator.onLine)return flash("Connexion nécessaire.");
+ const verbs={check_in:"enregistrer l'arrivée de ce client",check_out:"enregistrer le départ et placer la chambre en nettoyage",cancel:"annuler cette réservation"};
+ if(!verbs[action]||!window.confirm("Confirmer : "+verbs[action]+" ?"))return;
+ try{
+  const r=await sb.rpc("seven_transition_stay",{p_reservation_id:id,p_action:action});
+  if(r.error)throw r.error;
+  const note={check_in:"Check-in effectué : chambre occupée.",check_out:"Check-out effectué : chambre à nettoyer.",cancel:"Séjour annulé : dates libérées."};
+  flash(note[action]||"Séjour mis à jour.");
+  await loadAll();
+ }catch(e){console.error(e);flash(readableError(e));}
+}
+async function setRoomStatus(id,status){
+ if(!navigator.onLine)return flash("Connexion nécessaire pour changer l'état d'une chambre.");
+ if(status==="occupied")return flash("L'occupation est gérée par le check-in.");
+ try{
+  const r=await sb.from("rooms").update({operational_status:status}).eq("id",id).eq("hotel_id",state.hotelId).select("id").maybeSingle();
+  if(r.error)throw r.error;
+  if(!r.data)throw new Error("not_authorized");
+  flash(status==="available"?"Chambre déclarée prête.":"État de la chambre enregistré.");
+  await loadAll();
+ }catch(e){console.error(e);flash(readableError(e));await loadAll();}
+}
+
 el("loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;el("signIn").disabled=true;el("loginMessage").textContent="";try{const r=await sb.auth.signInWithPassword({email:el("email").value.trim(),password:el("password").value});if(r.error)throw r.error;await bootstrap();}catch(err){el("loginMessage").textContent="Connexion impossible : vérifiez vos identifiants."; }finally{el("signIn").disabled=false;}});
 el("signOut").addEventListener("click",async()=>{await sb.auth.signOut();state.user=null;state.roles=[];showLogin();});
 el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;await loadAll();});
