@@ -33,6 +33,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           npm run check
+          npm test
           node --check ../erp/app.js
           node --check ../erp/notifications.js
       - name: Build Windows installer and portable EXE
