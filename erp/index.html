@@ -95,7 +95,7 @@
 <label>Téléphone<input name="phone" type="tel" maxlength="40"></label>
 <label>E-mail<input name="email" type="email" maxlength="200"></label>
 <label class="wide">Présentation<input name="description" maxlength="1200" placeholder="Description publique de l'établissement"></label>
-</div><button type="submit" class="primary">Créer l'établissement</button><p class="hint">Un établissement nouvellement créé reste non publié sur le site vitrine tant que ses informations et chambres ne sont pas validées.</p></form></div>
+</div><button type="submit" class="primary">Créer l'établissement</button><p class="hint">Le nouvel établissement reste inactif jusqu'à son activation par la direction. Son site public n'est pas créé automatiquement.</p></form></div>
 <div class="panel edit-panel"><div class="panel-heading"><div><span class="overline">ADMINISTRATION</span><h2>Modifier un établissement</h2></div></div>
 <form id="propertyUpdateForm"><div class="form-row">
 <label>Établissement<select name="id" id="propertyEditId" required></select></label>
@@ -103,8 +103,8 @@
 <label>Ville<input name="city" id="propertyEditCity" required maxlength="100"></label>
 <label>Adresse<input name="address" id="propertyEditAddress" maxlength="240"></label>
 <label class="wide">Présentation<input name="description" id="propertyEditDescription" maxlength="1200"></label>
-<label class="property-active-field"><input name="active" id="propertyEditActive" type="checkbox"> Visible sur le portail public</label>
-</div><button type="submit" class="primary">Enregistrer les modifications</button><p class="hint">La publication concerne la fiche d'établissement. Les catégories de chambres restent soumises à leur propre validation.</p></form></div>
+<label class="property-active-field"><input name="active" id="propertyEditActive" type="checkbox"> Établissement actif dans Seven Gestion</label>
+</div><button type="submit" class="primary">Enregistrer les modifications</button><p class="hint">Activer l'établissement permet la gestion par ses employés. La création d'une page vitrine publique dédiée doit encore être configurée séparément.</p></form></div>
 </section>
 <section class="page" id="rfidPage"><div class="panel"><h2>Accès par carte RFID</h2><p>Le registre des cartes est prévu dans la base. L'encodage, l'ouverture des serrures et les révocations physiques seront activés une fois le fabricant, le lecteur et le protocole validés.</p><div id="rfidTable" class="table-container"></div><p class="hint">Le numéro UID seul ne constitue pas une preuve d'authentification. Prévoir des cartes sécurisées et une intégration matérielle testée.</p></div></section>
 </main></div></div>
