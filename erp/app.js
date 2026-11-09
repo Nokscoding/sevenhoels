@@ -1,9 +1,9 @@
 (function(){"use strict";
 const cfg=window.SEVEN_CONFIG||{},sb=(cfg.url&&cfg.publishableKey&&window.supabase)?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
-const state={user:null,roles:[],hotels:[],hotelId:"",view:"dashboard",requests:[],rooms:[],services:[],attendance:[],rfid:[]};
+const state={user:null,roles:[],hotels:[],hotelId:"",view:"dashboard",requests:[],rooms:[],roomTypes:[],stays:[],services:[],attendance:[],rfid:[],allocatingRequestId:null};
 const el=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const names={dashboard:["Vue d'ensemble","Toutes les informations essentielles de votre établissement."],requests:["Demandes de réservation","Suivez et traitez les demandes de vos visiteurs."],rooms:["Gestion des chambres","Suivez la disponibilité opérationnelle des chambres."],services:["Espaces et services","Gérez les salles, restaurants et installations."],attendance:["Présences","Enregistrez les entrées et sorties de votre équipe."],access:["Accès et permissions","Contrôlez les autorisations par établissement."],rfid:["Cartes RFID","Registre et préparation de la gestion des accès."]};
-const statusNames={pending:"En attente",approved:"Approuvée",declined:"Refusée",cancelled:"Annulée",available:"Disponible",occupied:"Occupée",cleaning:"Nettoyage",maintenance:"Maintenance",out_of_service:"Hors service"};
+const names={dashboard:["Vue d'ensemble","Toutes les informations essentielles de votre établissement."],requests:["Demandes de réservation","Suivez et traitez les demandes de vos visiteurs."],stays:["Séjours & arrivées","Gérez les confirmations, arrivées et départs des clients."],rooms:["Gestion des chambres","Suivez la disponibilité opérationnelle des chambres."],services:["Espaces et services","Gérez les salles, restaurants et installations."],attendance:["Présences","Enregistrez les entrées et sorties de votre équipe."],access:["Accès et permissions","Contrôlez les autorisations par établissement."],rfid:["Cartes RFID","Registre et préparation de la gestion des accès."]};
+const statusNames={pending:"En attente",confirmed:"Confirmée",checked_in:"Occupée",checked_out:"Terminé",no_show:"Non-présenté",approved:"Approuvée",declined:"Refusée",cancelled:"Annulée",available:"Disponible",occupied:"Occupée",cleaning:"Nettoyage",maintenance:"Maintenance",out_of_service:"Hors service"};
 const roleNames={supervisor:"Supervision globale",director:"Direction",manager:"Responsable",reception:"Réception",housekeeping:"Entretien",accountant:"Comptabilité"};
 function flash(message){el("flash").textContent=message;el("flash").scrollIntoView({block:"nearest",behavior:"smooth"});}
 function offline(){el("connectionState").textContent=navigator.onLine?"● En ligne":"● Hors connexion";el("connectionState").classList.toggle("offline",!navigator.onLine);}
@@ -16,18 +16,85 @@ function canHandle(){return ["supervisor","director","manager","reception"].incl
 function currentHotel(){return state.hotels.find(h=>h.id===state.hotelId);}
 function isValidUUID(v){return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);}
 function showLogin(msg){el("appShell").hidden=true;el("loginScreen").hidden=false;el("loginMessage").textContent=msg||"";}
-function showApp(){el("loginScreen").hidden=true;el("appShell").hidden=false;el("userAvatar").textContent=(state.user.email||"S")[0].toUpperCase();el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("hotelSwitcher").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");el("hotelSwitcher").value=state.hotelId;el("roleHotel").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");document.querySelector(".supervisor-link").hidden=!canManageAccess();el("roleSelect").querySelectorAll("option").forEach(o=>{o.hidden=!supervisor()&&(o.value==="supervisor"||o.value==="director");});if(!supervisor())el("roleSelect").value="manager";el("roleHotel").value=state.hotelId;el("roleHotel").disabled=!supervisor();el("serviceForm").hidden=!canManage();goto("dashboard");}
+function roleNav(){document.querySelector('[data-view="requests"]').hidden=!canHandle();document.querySelector('[data-view="stays"]').hidden=!(canHandle()||currentRole()==="accountant");document.querySelector(".supervisor-link").hidden=!canManageAccess();}
+function showApp(){el("loginScreen").hidden=true;el("appShell").hidden=false;el("userAvatar").textContent=(state.user.email||"S")[0].toUpperCase();el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("hotelSwitcher").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");el("hotelSwitcher").value=state.hotelId;el("roleHotel").innerHTML=state.hotels.map(h=>'<option value="'+esc(h.id)+'">'+esc(h.name)+'</option>').join("");roleNav();el("roleSelect").querySelectorAll("option").forEach(o=>{o.hidden=!supervisor()&&(o.value==="supervisor"||o.value==="director");});if(!supervisor())el("roleSelect").value="manager";el("roleHotel").value=state.hotelId;el("roleHotel").disabled=!supervisor();el("serviceForm").hidden=!canManage();goto("dashboard");}
 async function bootstrap(){if(!sb){showLogin("La configuration d'accès au serveur est manquante.");return;}const auth=await sb.auth.getUser();if(auth.error||!auth.data.user){showLogin();return;}state.user=auth.data.user;const roles=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active").eq("user_id",state.user.id).eq("active",true);if(roles.error||!roles.data?.length){await sb.auth.signOut();state.user=null;showLogin("Ce compte n'a pas encore reçu d'autorisation. Contactez la supervision.");return;}state.roles=roles.data;
 const hotels=await sb.from("hotels").select("id,name,slug,active").eq("active",true).order("name");if(hotels.error){showLogin("Impossible de charger les établissements.");return;}state.hotels=supervisor()?hotels.data:hotels.data.filter(h=>state.roles.some(r=>r.hotel_id===h.id));if(!state.hotels.length){showLogin("Aucun établissement attribué.");return;}state.hotelId=state.hotels[0].id;showApp();await loadAll();}
-function goto(view){if(view==="access"&&!canManageAccess())return;state.view=view;document.querySelectorAll(".page").forEach(n=>n.classList.toggle("active",n.id===view+"Page"));document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b.dataset.view===view));el("pageTitle").textContent=names[view][0];el("pageDescription").textContent=names[view][1];el("breadcrumb").textContent=names[view][0].toUpperCase();el("serviceForm").hidden=!(view==="services"&&canManage());document.querySelector(".sidebar").classList.remove("open");}
+function goto(view){if(view==="access"&&!canManageAccess())return;if(view==="requests"&&!canHandle())return;if(view==="stays"&&!(canHandle()||currentRole()==="accountant"))return;state.view=view;document.querySelectorAll(".page").forEach(n=>n.classList.toggle("active",n.id===view+"Page"));document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b.dataset.view===view));el("pageTitle").textContent=names[view][0];el("pageDescription").textContent=names[view][1];el("breadcrumb").textContent=names[view][0].toUpperCase();el("serviceForm").hidden=!(view==="services"&&canManage());document.querySelector(".sidebar").classList.remove("open");}
 async function fetchFor(table,cols="*"){const q=sb.from(table).select(cols).eq("hotel_id",state.hotelId);const r=await q;if(r.error)throw r.error;return r.data||[];}
 function dateDisplay(v){return v?new Date(v).toLocaleDateString("fr-FR"):"—";}
 function table(headers,rows){if(!rows.length)return '<div class="empty">Aucune donnée à afficher pour cet établissement.</div>';return '<table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join("")+'</tr></thead><tbody>'+rows.join("")+'</tbody></table>';}
 function pill(status){return '<span class="status '+esc(status)+'">'+esc(statusNames[status]||status)+'</span>';}
-function renderRequests(){const rows=state.requests.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(r=>'<tr><td>'+esc(r.guest_name)+'</td><td>'+esc(r.kind)+'</td><td>'+esc(r.guest_phone)+'</td><td>'+esc(r.guests)+'</td><td>'+dateDisplay(r.start_date)+'</td><td>'+pill(r.status)+'</td><td>'+(canHandle()?'<select data-request="'+esc(r.id)+'"><option value="pending" '+(r.status==="pending"?"selected":"")+'>En attente</option><option value="approved" '+(r.status==="approved"?"selected":"")+'>Approuver</option><option value="declined" '+(r.status==="declined"?"selected":"")+'>Refuser</option><option value="cancelled" '+(r.status==="cancelled"?"selected":"")+'>Annuler</option></select>':"—")+'</td></tr>');
-el("requestsTable").innerHTML=table(["Client","Type","Téléphone","Pers.","Date","Statut","Action"],rows);
-el("recentRequests").innerHTML=table(["Client","Type","Date","Statut"],state.requests.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5).map(r=>'<tr><td>'+esc(r.guest_name)+'</td><td>'+esc(r.kind)+'</td><td>'+dateDisplay(r.start_date)+'</td><td>'+pill(r.status)+'</td></tr>'));}
-function renderRooms(){el("roomsTable").innerHTML=table(["N° chambre","Étage","Statut","Action"],state.rooms.map(r=>'<tr><td>'+esc(r.number)+'</td><td>'+esc(r.floor||"—")+'</td><td>'+pill(r.operational_status)+'</td><td>'+(["supervisor","director","manager","reception","housekeeping"].includes(currentRole())?'<select data-room="'+esc(r.id)+'">'+["available","occupied","cleaning","maintenance","out_of_service"].map(s=>'<option value="'+s+'" '+(r.operational_status===s?"selected":"")+'>'+esc(statusNames[s])+'</option>').join("")+'</select>':"—")+'</td></tr>'));}
+function stayBlocksRoom(roomId,start,end){return state.stays.find(s=>s.room_id===roomId&&["pending","confirmed","checked_in"].includes(s.status)&&s.check_in<end&&start<s.check_out);}
+function todayLocal(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");}
+function roomOptionsFor(req){return state.rooms.filter(r=>{
+ const rt=state.roomTypes.find(t=>t.id===r.room_type_id);
+ return r.active&&rt?.active&&rt.capacity>=req.guests
+   &&!["maintenance","out_of_service"].includes(r.operational_status)
+   &&!(req.start_date===todayLocal()&&["occupied","cleaning"].includes(r.operational_status))
+   &&!stayBlocksRoom(r.id,req.start_date,req.end_date);
+});}
+function renderRequests(){
+ const rows=state.requests.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(r=>{
+  let action="—";
+  if(canHandle()&&r.status==="pending"){
+    action='<div class="inline-actions">'+(r.kind==="stay"?'<button type="button" class="action-button action-primary" data-allocate="'+esc(r.id)+'">Attribuer chambre</button>':'<span class="hint">À organiser</span>')+'<button type="button" class="action-button action-danger" data-decline="'+esc(r.id)+'">Refuser</button></div>';
+  } else if(r.reservation_id){
+    const stay=state.stays.find(s=>s.id===r.reservation_id);
+    action='<span class="reservation-ref">'+esc(stay?.reference||"Séjour lié")+'</span>';
+  }
+  return '<tr><td>'+esc(r.guest_name)+'</td><td>'+esc(({stay:"Chambre",apartment:"Appartement",restaurant:"Restaurant",event:"Événement",fitness:"Sport & bien-être"})[r.kind]||r.kind)+'</td><td>'+esc(r.guest_phone)+'</td><td>'+esc(r.guests)+'</td><td>'+esc(r.start_date)+(r.end_date?' → '+esc(r.end_date):'')+'</td><td>'+pill(r.status)+'</td><td>'+action+'</td></tr>';
+ });
+ el("requestsTable").innerHTML=table(["Client","Type","Téléphone","Pers.","Dates","Statut","Décision"],rows);
+ el("recentRequests").innerHTML=table(["Client","Type","Date","Statut"],state.requests.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5).map(r=>'<tr><td>'+esc(r.guest_name)+'</td><td>'+esc(r.kind)+'</td><td>'+esc(r.start_date)+'</td><td>'+pill(r.status)+'</td></tr>'));
+ el("requestCount").textContent=state.requests.filter(r=>r.status==="pending").length;
+}
+function renderStays(){
+ const rows=state.stays.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(s=>{
+  const room=state.rooms.find(r=>r.id===s.room_id),date=todayLocal();
+  let actions="—";
+  if(canHandle()){
+   const buttons=[];
+   if(s.status==="confirmed"&&s.check_in<=date&&s.check_out>date){
+    buttons.push('<button type="button" class="action-button action-primary" data-stay="'+esc(s.id)+'" data-action="check_in">Check-in</button>');
+   }
+   if(s.status==="checked_in"){
+    buttons.push('<button type="button" class="action-button action-primary" data-stay="'+esc(s.id)+'" data-action="check_out">Check-out</button>');
+   }
+   if(["confirmed","pending"].includes(s.status)){
+    buttons.push('<button type="button" class="action-button action-danger" data-stay="'+esc(s.id)+'" data-action="cancel">Annuler</button>');
+   }
+   if(buttons.length)actions='<div class="inline-actions">'+buttons.join("")+'</div>';
+  }
+  return '<tr><td><span class="reservation-ref">'+esc(s.reference)+'</span></td><td>'+esc(s.guest_name)+'</td><td>'+esc(room?.number||"—")+'</td><td>'+esc(s.check_in)+' → '+esc(s.check_out)+'</td><td>'+pill(s.status)+'</td><td>'+actions+'</td></tr>';
+ });
+ el("staysTable").innerHTML=table(["Référence","Client","Chambre","Dates","Statut","Actions"],rows);
+}
+function renderRooms(){
+ const date=el("availabilityDate").value||todayLocal();
+ if(!el("availabilityDate").value)el("availabilityDate").value=date;
+ const rows=state.rooms.map(r=>{
+  const type=state.roomTypes.find(t=>t.id===r.room_type_id),book=stayBlocksRoom(r.id,date,datePlusOne(date));
+  const planning=book?'<span class="status booked">Réservée · '+esc(book.reference||"séjour")+'</span>':'<span class="status free">Libre sur ce jour</span>';
+  let action="—";
+  if(["supervisor","director","manager","reception","housekeeping"].includes(currentRole())){
+   if(r.operational_status==="occupied")action='<span class="hint">Via check-out</span>';
+   else action='<select data-room="'+esc(r.id)+'">'+["available","cleaning","maintenance","out_of_service"].map(s=>'<option value="'+s+'" '+(r.operational_status===s?"selected":"")+'>'+esc(statusNames[s])+'</option>').join("")+'</select>';
+  }
+  return '<tr><td>'+esc(r.number)+'</td><td>'+esc(type?.name||"—")+'</td><td>'+esc(r.floor||"—")+'</td><td>'+pill(r.operational_status)+'</td><td>'+planning+'</td><td>'+action+'</td></tr>';
+ });
+ el("roomsTable").innerHTML=table(["N°","Catégorie","Étage","État réel","Planning au "+date,"Action"],rows);
+}
+function datePlusOne(date){const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
+function money(amount,currency){try{return new Intl.NumberFormat("fr-FR",{style:"currency",currency:currency||"USD"}).format(Number(amount));}catch{return String(amount)+" "+(currency||"");}}
+function renderRoomTypes(){
+ el("roomTypePanel").hidden=!canManage();
+ el("roomCreationPanel").hidden=!canManage();
+ const options=state.roomTypes.filter(t=>t.active).map(t=>'<option value="'+esc(t.id)+'">'+esc(t.name)+'</option>').join("");
+ el("roomCreationType").innerHTML='<option value="">Choisir une catégorie</option>'+options;
+ el("roomTypesTable").innerHTML=table(["Catégorie","Capacité","Tarif / nuit","Publication"],state.roomTypes.map(t=>'<tr><td>'+esc(t.name)+'</td><td>'+esc(t.capacity)+'</td><td>'+esc(money(t.base_price,t.currency))+'</td><td>'+(t.website_published?"Publiée":"Privée")+'</td></tr>'));
+}
+
 function renderServices(){el("servicesTable").innerHTML=table(["Service","Type","Capacité","Publication"],state.services.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.kind)+'</td><td>'+esc(r.capacity)+'</td><td>'+ (r.active?"Visible":"Non publié") +'</td></tr>'));}
 function renderAttendance(){el("attendanceTable").innerHTML=table(["Entrée","Sortie","État"],state.attendance.slice().sort((a,b)=>new Date(b.clock_in)-new Date(a.clock_in)).map(r=>'<tr><td>'+dateDisplay(r.clock_in)+' '+new Date(r.clock_in).toLocaleTimeString("fr-FR")+'</td><td>'+(r.clock_out?new Date(r.clock_out).toLocaleTimeString("fr-FR"):"—")+'</td><td>'+(r.clock_out?"Terminé":"Présent")+'</td></tr>'));}
 function renderRoles(){if(!canManageAccess())return;el("accessTable").innerHTML=table(["Collaborateur","Compte","Rôle","Établissement"],state.allRoles.map(r=>'<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.user_id)+'</td><td><span class="role-pill">'+esc(roleNames[r.role])+'</span></td><td>'+esc((state.hotels.find(h=>h.id===r.hotel_id)||{}).name||"Tous")+'</td></tr>'));}
