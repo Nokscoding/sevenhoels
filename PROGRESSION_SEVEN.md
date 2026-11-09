@@ -1,30 +1,68 @@
-# SEVEN — SUIVI DU PROJET
-Date : 9 novembre 2026
+# SEVEN — JOURNAL DE PROGRESSION
 
-## Périmètre validé
-- Site vitrine public : hôtels Seven 7 / Seven 47 / Seven 71, appartements, chambres, suites, restaurant, salle de sport, espaces événementiels. Les espaces et services réservables disposeront de leurs créneaux et disponibilités.
-- ERP de direction séparé sur une autre adresse. Direction : accès, équipes, entrées/sorties employés, budgets et rapports.
-- Logiciel commun aux établissements : comptes rattachés à leur hôtel ou appartement; réservations, chambres, entrées/sorties clients, caisse, gestion locale.
-- Superviseur global : accès au-dessus de toutes les directions.
-- Offline : logiciel Windows avec base locale et synchronisation prudente, conflits de réservations contrôlés.
-- RFID : cartes d'accès pour chambres et appartements, programmation/révocation à relier au matériel retenu.
-- Aucun texte « en développement » dans le site public.
-- Photos d'espaces : rechercher des images web réellement réutilisables et éviter de présenter des photos fictives comme celles des établissements.
+**Dernière mise à jour : 9 novembre 2026**
+**Branche de travail : develop/seven-foundation**
+**Statut : première fondation développée, PAS EN PRODUCTION**
 
-## État réel
-- Cahier des charges version 1.0 créé.
-- Supabase 2 : projet « Gestion Chaine Hotels » disponible, 9 tables inspectées, aucune donnée ni changement de schéma.
-- Kit graphique Seven v1 généré en local : 149 fichiers, 58 pictogrammes SVG, logos dark/light, favicon, app icons, cartes RFID, restaurant, fitness, événements.
-- Dépôt existant : Nokscoding/sevenhoels.
-- Netlify existants : sevenhotels et sevengestion (NE PAS créer de doublons). Connexion GitHub/déploiement à vérifier.
+## Décisions à conserver
+- Le site public et l'ERP privé sont deux déploiements / origines différents. Un lien secret ne suffit pas : contrôle réel par authentification et politiques RLS.
+- Application métier commune avec données isolées par hôtel/appartement.
+- La supervision globale est au-dessus des directions. Une direction peut déléguer uniquement des rôles subalternes dans son établissement.
+- Le système RFID concerne l'ouverture des chambres et appartements. Matériel non encore choisi.
+- Fonctionnement Windows hors ligne requis : **pas encore livré**. Aucune réservation ne peut être validée hors ligne sans stratégie de résolution des conflits.
+- Pas de textes « en cours de développement », de prix ou d'adresses inventés sur le site public.
+- Les photographies actuelles sont des photographies d'illustration (Unsplash), pas les vrais établissements.
 
-## Prochaine étape
-1. Valider ou ajuster le logo Seven avant usage officiel.
-2. Ajouter le kit graphique complet au dépôt et organiser public/assets/.
-3. Auditer les sites Netlify Seven existants et leur liaison GitHub.
-4. Intégrer le site public et les fonctionnalités de réservation des espaces.
-5. Étendre la base Supabase pour ressources réservables, multi-établissements, RH, permissions.
-6. Mettre en place le portail privé, le logiciel offline, puis le dispositif RFID.
+## Terminé aujourd'hui
+1. **Site public** sous `public/` : accueil responsive, établissements Seven 7, 47, 71 et appartements, services restaurant, salle de sport, événements, formulaire de demande client.
+2. **ERP** sous `erp/` : connexion Supabase Auth, tableau de bord, lecture et traitement des demandes, état des chambres, liste des services, pointage, consultation RFID, gestion des rôles.
+3. **Supabase** : nouvelles tables `seven_roles`, `seven_booking_requests`, `seven_service_resources`, `seven_attendance`, `seven_rfid_cards` avec politiques RLS ; règles de délégation locale.
+4. Réutilisation des fiches historiques `seven7`, `47`, `71`, suppression sécurisée des 3 doublons nouvellement créés, maintien de `seven-apartments`.
+5. Sécurité : contrôle RLS sur les nouveaux espaces; exécution anonyme de 12 fonctions privilégiées historiques révoquée (fonctions publiques historiques de recherche/réservation conservées).
+6. Assets : symbole Seven intégré aux deux interfaces; pack visuel complet préparé séparément.
+7. Contrôles : analyse syntaxique JS des deux applications, vérification des identifiants HTML, migration Supabase appliquée, insertion de réservation anonyme testée en transaction puis ROLLBACK.
+8. **Aucun déploiement Netlify effectué.** Le code est sur la branche `develop/seven-foundation` du dépôt `Nokscoding/sevenhoels`.
 
-## Discipline
-À chaque session, mettre à jour ce fichier avec les fichiers changés, tests, obstacles et la prochaine action concrète. Ne pas modifier les données réelles ou masquer des limitations du système.
+## Ce qui reste à faire (priorités)
+- [ ] Réaliser les tests utilisateur dans un vrai navigateur et corriger les parcours.
+- [ ] Confirmer le compte Supabase Auth du superviseur et lui attribuer explicitement `supervisor` ; aucun rôle n'a encore été attribué.
+- [ ] Inviter les directeurs/personnels de façon sécurisée (interface dédiée ou fonction serveur). Le formulaire actuel attribue seulement les rôles à des UUID Auth préexistants.
+- [ ] Faire passer la gestion des demandes à la vraie réservation avec attribution des chambres, inventaire et vérification anti-chevauchement atomique.
+- [ ] Créer de vraies fiches chambres, appartements, services, tarifs et disponibilités à partir de données Seven validées.
+- [ ] Ajouter calendriers/capacités/horaires des restaurants, fitness et événements, réservations confirmées, paiements et états de caisse.
+- [ ] ERP : droits de délégation à tester pour un vrai directeur; ajouter révocation d'accès et journaux d'audit métier.
+- [ ] Windows : concevoir puis implémenter stockage chiffré local, journal de commandes, signatures/idempotence, file de synchronisation et arbitrage des conflits.
+- [ ] RFID : choisir cartes/serrures/lecteurs compatibles, définir procédure d'encodage, renouvellement, révocation et intégration hors ligne.
+- [ ] Compléter le dépôt avec le reste des assets dans `public/assets/` et tester tous les liens photo.
+- [ ] Revoir les avertissements restants du conseiller sécurité Supabase, notamment la protection contre les mots de passe compromis.
+- [ ] Configurer les deux projets Netlify existants seulement après tests, sans créer de projet supplémentaire.
+
+## Blocages honnêtes
+- Aucune connexion de personnel encore utilisable : `seven_roles` est vide, attribution superviseur nécessaire.
+- Demande de réservation ≠ réservation confirmée ; aucune promesse de disponibilité immédiate.
+- Les photos d'illustration ne doivent pas être présentées comme les vrais hôtels.
+- Il n'y a pas encore de logiciel Windows hors ligne opérationnel ni de cartes physiques configurées.
+- Pas de preuve de test complet dans un navigateur ni de déploiement en production.
+
+## Reprise
+Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. Inspecter `public/`, `erp/` et `supabase/migrations/`. Commencer par les tests fonctionnels et l'activation du superviseur après confirmation du bon utilisateur Auth.
+
+## Déploiement d'aperçu — 9 novembre 2026
+- **Site vitrine uniquement** publié sur : https://seven-hotels-preview.vercel.app
+- Projet Vercel dédié : `seven-hotels-preview` (nks16), déploiement `dpl_FrWWNzfAJvAYSg1UoY6meeVmWeTQ`, état `READY`.
+- Fichiers déployés : `public/index.html`, `style.css`, `app.js`, `config.js`, `favicon.svg`, `assets/seven-mark.svg`, tirés de la branche `develop/seven-foundation`.
+- **Contrôle navigateur effectué** : accueil chargé, quatre cartes établissements visibles, images chargées, boutons ouvrant le formulaire, fermeture correcte. Aucune demande transmise pendant le contrôle ; les flux de soumission réels restent à tester séparément.
+- Sites Netlify `sevenhotels` et `sevengestion` inchangés, ERP non publié.
+- Prévisualisation publique ne constitue pas un lancement commercial : photos d'ambiance, demandes de réservation non confirmées, inventaire encore incomplet.
+
+## Pages individuelles et préparation Netlify — 9 novembre 2026
+- Pages créées : `/hotels/7/` (Seven 7), `/hotels/47/` (Seven 47), `/hotels/71/` (Seven 71).
+- Chaque page dispose d'un visuel principal, d'une description, de trois aperçus de chambres avec images d'illustration, d'une galerie, des services et d'un formulaire de demande connecté à Supabase.
+- Les chambres réellement publiées par la direction s'afficheront automatiquement grâce au nouveau champ `room_types.website_published` (false par défaut) et à la politique de lecture publique limitée.
+- Page `/appartements/` : **COMING SOON**, sans formulaire ni possibilité de réservation des appartements.
+- Accueil : chaque carte ouvre maintenant son établissement, tandis que Seven Apartments ouvre la page d'annonce. Les appartements ne figurent plus parmi les établissements réservables.
+- Routes courtes Netlify dans `public/_redirects` : `/7`, `/47`, `/71`.
+- Configuration `netlify.toml` : seule l'arborescence `public/` sera publiée ; en-têtes de sécurité et exclusion de l'indexation pendant la prévisualisation.
+- Contrôles statiques : syntaxe JS des deux modules publics OK ; trois pages hôtels avec 3 aperçus chacune ; page Apartments avec Coming Soon vérifiée dans le code.
+- **Netlify `sevenhotels` EXISTANT ENCORE NON ACTUALISÉ :** le connecteur Netlify disponible expose la consultation des sites mais pas une action de téléversement/déploiement. Son ancien déploiement est manuel et n'a pas de lien GitHub. Une action de liaison de dépôt depuis le dashboard Netlify reste nécessaire ; ne pas prétendre que la nouvelle version y est déjà en ligne.
+- Aperçu Vercel précédemment déployé : ancienne version sans les pages détaillées ; ne pas le présenter comme une vérification de la nouvelle version.
