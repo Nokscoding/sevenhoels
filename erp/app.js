@@ -173,26 +173,25 @@ function render(){
 async function rememberDesktopRooms(){
  const desktop=window.sevenDesktop;
  if(!desktop||!state.user||!state.hotelId)return;
+ // Capture a stable snapshot before any asynchronous storage operations.
+ const userId=state.user.id,hotelId=state.hotelId,hotelName=currentHotel()?.name||"Établissement";
+ const rooms=state.rooms.map(room=>({
+  number:String(room.number||"").slice(0,25),
+  floor:String(room.floor||"").slice(0,30),
+  status:room.operational_status
+ }));
  try{
   const previous=await desktop.readSnapshot();
-  const sameAccount=previous?.userId===state.user.id;
+  const sameAccount=previous?.userId===userId;
   const prior=sameAccount&&Array.isArray(previous.properties)?previous.properties:[];
-  const fresh={
-   id:state.hotelId,name:currentHotel()?.name||"Établissement",
-   rooms:state.rooms.map(room=>({
-    number:String(room.number||"").slice(0,25),
-    floor:String(room.floor||"").slice(0,30),
-    status:room.operational_status
-   }))
-  };
-  const properties=prior.filter(p=>p.id!==fresh.id).concat([fresh]);
-  await desktop.saveSnapshot({userId:state.user.id,properties});
+  const fresh={id:hotelId,name:hotelName,rooms};
+  const properties=prior.filter(p=>p.id!==hotelId).concat([fresh]);
+  await desktop.saveSnapshot({userId,properties});
  }catch(error){
-  // Storage is optional. If encryption cannot be provided, never write plaintext.
+  // Fail closed: never write plaintext if OS-level encryption is unavailable.
   console.info("Consultation hors ligne non mise à jour :",error?.message);
  }
 }
-
 async function loadAll(){
  const hotel=state.hotelId;
  try{
