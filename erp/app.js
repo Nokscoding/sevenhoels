@@ -1,6 +1,6 @@
 (function(){"use strict";
 const cfg=window.SEVEN_CONFIG||{},sb=(cfg.url&&cfg.publishableKey&&window.supabase)?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
-const state={user:null,roles:[],hotels:[],hotelId:"",view:"dashboard",requests:[],rooms:[],roomTypes:[],stays:[],services:[],attendance:[],employees:[],rfid:[],allocatingRequestId:null};
+const state={user:null,roles:[],hotels:[],hotelId:"",view:"dashboard",requests:[],rooms:[],roomTypes:[],stays:[],services:[],attendance:[],employees:[],rfid:[],media:[],allocatingRequestId:null};
 const el=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const names={dashboard:["Vue d'ensemble","Toutes les informations essentielles de votre établissement."],requests:["Réservations à confirmer","Contactez les clients, vérifiez les disponibilités et confirmez les réservations."],stays:["Séjours & arrivées","Gérez les confirmations, arrivées et départs des clients."],rooms:["Gestion des chambres","Suivez la disponibilité opérationnelle des chambres."],services:["Espaces et services","Gérez les salles, restaurants et installations."],attendance:["Présences","Enregistrez les entrées et sorties de votre équipe."],access:["Accès et permissions","Contrôlez les autorisations par établissement."],notifications:["Notifications","Suivez les événements importants de vos établissements."],management:["Espace responsables","Pilotage des équipes, de l’hôtel et des opérations."],properties:["Établissements","Gérez les hôtels et appartements de la chaîne Seven."],rfid:["Cartes RFID","Registre et préparation de la gestion des accès."]};
 const statusNames={pending:"À contacter",confirmed:"Confirmée",checked_in:"Occupée",checked_out:"Terminé",no_show:"Non-présenté",approved:"Approuvée",declined:"Refusée",cancelled:"Annulée",available:"Disponible",occupied:"Occupée",cleaning:"Nettoyage",maintenance:"Maintenance",out_of_service:"Hors service"};
@@ -112,8 +112,76 @@ function renderRequests(){
  });
  el("requestsTable").innerHTML=table(["Client","Type","Téléphone","Pers.","Dates","Statut","Contact","Décision"],rows);
  el("recentRequests").innerHTML=table(["Client","Type","Date","Statut"],state.requests.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5).map(r=>'<tr><td>'+esc(r.guest_name)+'</td><td>'+esc(r.kind)+'</td><td>'+esc(r.start_date)+'</td><td>'+pill(r.status)+'</td></tr>'));
- el("requestCount").textContent=state.requests.filter(r=>r.status==="pending").length;
+ el("requestCount").textContent=state.requests.filter(r=>r.status==="pending").length+state.stays.filter(r=>r.status==="pending"&&r.source==="public").length;
 }
+
+function renderDirectBookings(){
+ const incoming=state.stays.filter(s=>s.source==="public"&&s.status==="pending").sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+ const rows=incoming.map(s=>{
+  const room=state.rooms.find(r=>r.id===s.room_id),contact=String(s.guest_phone||"").replace(/[^+0-9]/g,""),wa=String(s.guest_phone||"").replace(/\D/g,"");
+  return '<tr><td>'+esc(s.reference||"—")+'</td><td>'+esc(s.guest_name)+'</td><td>'+esc(room?.number||"—")+'</td><td>'+esc(s.check_in)+' → '+esc(s.check_out)+'</td><td>'+esc(money(s.total_amount,s.currency))+'</td><td><div class="contact-actions"><a href="tel:'+esc(contact)+'">Appeler</a>'+(wa?'<a href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener noreferrer">WhatsApp</a>':"")+(s.guest_email?'<a href="mailto:'+esc(s.guest_email)+'">E-mail</a>':"")+'</div></td><td><div class="inline-actions"><button type="button" class="action-button action-primary" data-direct-confirm="'+esc(s.id)+'">Confirmer après contact</button><button type="button" class="action-button action-danger" data-direct-cancel="'+esc(s.id)+'">Annuler</button></div></td></tr>';
+ });
+ el("selectedBookingsTable").innerHTML=table(["Référence","Client","Chambre choisie","Dates","Total","Contact","Décision"],rows);
+ el("selectedBookingsPanel").hidden=!canHandle();
+}
+async function decideDirectBooking(id,action){
+ if(!canHandle()||!navigator.onLine)return flash("Cette action nécessite la connexion et les droits réception.");
+ const stay=state.stays.find(s=>s.id===id&&s.hotel_id===state.hotelId&&s.source==="public"&&s.status==="pending");
+ if(!stay)return flash("Réservation déjà traitée. Actualisez la liste.");
+ if(!window.confirm(action==="confirm"?"Avez-vous contacté le client et validé la réservation "+(stay.reference||"")+" ?":"Annuler cette réservation et libérer la chambre ?"))return;
+ try{
+  if(action==="cancel"){
+   const r=await sb.rpc("seven_transition_stay",{p_reservation_id:stay.id,p_action:"cancel"});
+   if(r.error)throw r.error;
+   flash("Réservation annulée, chambre libérée pour les dates concernées.");
+  }else{
+   const r=await sb.from("reservations").update({status:"confirmed"}).eq("id",stay.id).eq("hotel_id",state.hotelId).eq("source","public").eq("status","pending").select("id").single();
+   if(r.error)throw r.error;
+   flash("Réservation confirmée après contact. Elle apparaît dans Séjours & arrivées.");
+  }
+  await loadAll();
+ }catch(error){console.error("Direct booking decision failed",error);flash(readableError(error));}
+}
+const ROOM_BUCKET="seven-property-media";
+function roomMedia(roomId){return state.media.filter(m=>m.room_id===roomId&&m.kind==="room").sort((a,b)=>Number(b.is_cover)-Number(a.is_cover)||(a.sort_order||0)-(b.sort_order||0));}
+function mediaURL(path){return sb.storage.from(ROOM_BUCKET).getPublicUrl(path).data.publicUrl;}
+async function uploadRoomPhotos(roomId,files){
+ const allowed={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
+ const photos=[...files].filter(f=>f?.size>0);
+ if(!photos.length)return 0;
+ if(photos.length>6)throw Error("Sélectionnez six photos maximum à la fois.");
+ for(const file of photos)if(!allowed[file.type]||file.size>7*1024*1024)throw Error("Photos JPG, PNG ou WebP uniquement, 7 Mo maximum par photo.");
+ if(!state.rooms.some(r=>r.id===roomId&&r.hotel_id===state.hotelId))throw Error("Cette chambre n'appartient pas à cet établissement.");
+ let count=0;
+ for(const file of photos){
+  const filename=crypto.randomUUID()+"."+allowed[file.type];
+  const storage_path=state.hotelId+"/"+roomId+"/"+filename;
+  const uploaded=await sb.storage.from(ROOM_BUCKET).upload(storage_path,file,{cacheControl:"3600",upsert:false,contentType:file.type});
+  if(uploaded.error)throw uploaded.error;
+  const saved=await sb.from("seven_media").insert({
+   hotel_id:state.hotelId,room_id:roomId,kind:"room",storage_path,
+   caption:"Chambre "+(state.rooms.find(r=>r.id===roomId)?.number||""),
+   is_cover:roomMedia(roomId).length===0&&count===0,sort_order:roomMedia(roomId).length+count
+  }).select("id").single();
+  if(saved.error){await sb.storage.from(ROOM_BUCKET).remove([storage_path]).catch(()=>{});throw saved.error;}
+  count++;
+ }
+ return count;
+}
+function renderRoomMedia(){
+ const panel=el("roomPresentationPanel");panel.hidden=!canManage();
+ if(!canManage())return;
+ const previous=el("roomPresentationId").value;
+ el("roomPresentationId").innerHTML='<option value="">Choisir une chambre</option>'+state.rooms.filter(r=>r.active).map(r=>'<option value="'+esc(r.id)+'">Chambre '+esc(r.number)+' · '+esc(state.roomTypes.find(t=>t.id===r.room_type_id)?.name||"")+'</option>').join("");
+ if(state.rooms.some(r=>r.id===previous))el("roomPresentationId").value=previous;
+ const room=state.rooms.find(r=>r.id===el("roomPresentationId").value);
+ el("roomPresentationDescription").value=room?.description||"";
+ const images=room?roomMedia(room.id):[];
+ el("roomPhotoGallery").innerHTML=images.length?images.map(m=>
+  '<div class="seven-room-photo"><img loading="lazy" src="'+esc(mediaURL(m.storage_path))+'" alt="'+esc(m.caption||"Photo de la chambre")+'"><button class="action-button action-danger" type="button" data-photo-delete="'+esc(m.id)+'">Retirer</button></div>'
+ ).join(""):'<p class="hint">Aucune photo. Une chambre sans photo ne sera pas proposée aux clients en ligne.</p>';
+}
+
 function renderStays(){
  const rows=state.stays.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(s=>{
   const room=state.rooms.find(r=>r.id===s.room_id),date=todayLocal();
@@ -146,9 +214,9 @@ function renderRooms(){
    if(r.operational_status==="occupied")action='<span class="hint">Via check-out</span>';
    else action='<select data-room="'+esc(r.id)+'">'+["available","cleaning","maintenance","out_of_service"].map(s=>'<option value="'+s+'" '+(r.operational_status===s?"selected":"")+'>'+esc(statusNames[s])+'</option>').join("")+'</select>';
   }
-  return '<tr><td>'+esc(r.number)+'</td><td>'+esc(type?.name||"—")+'</td><td>'+esc(r.floor||"—")+'</td><td>'+pill(r.operational_status)+'</td><td>'+planning+'</td><td>'+action+'</td></tr>';
+  return '<tr><td>'+esc(r.number)+'</td><td>'+esc(type?.name||"—")+'</td><td>'+esc(r.floor||"—")+'</td><td>'+pill(r.operational_status)+'</td><td>'+planning+'</td><td>'+esc(roomMedia(r.id).length)+" photo(s)</td><td>"+(canManage()?'<button type="button" class="action-button" data-room-edit="'+esc(r.id)+'">Photos & description</button>':"—")+"</td><td>"+action+"</td></tr>";
  });
- el("roomsTable").innerHTML=table(["N°","Catégorie","Étage","État réel","Planning au "+date,"Action"],rows);
+ el("roomsTable").innerHTML=table(["N°","Catégorie","Étage","État réel","Planning au "+date,"Photos","Présentation","État"],rows);
 }
 function datePlusOne(date){const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
 function money(amount,currency){try{return new Intl.NumberFormat("fr-FR",{style:"currency",currency:currency||"USD"}).format(Number(amount));}catch{return String(amount)+" "+(currency||"");}}
@@ -157,7 +225,7 @@ function renderRoomTypes(){
  el("roomCreationPanel").hidden=!canManage();
  const options=state.roomTypes.filter(t=>t.active).map(t=>'<option value="'+esc(t.id)+'">'+esc(t.name)+'</option>').join("");
  el("roomCreationType").innerHTML='<option value="">Choisir une catégorie</option>'+options;
- el("roomTypesTable").innerHTML=table(["Catégorie","Capacité","Tarif / nuit","Publication"],state.roomTypes.map(t=>'<tr><td>'+esc(t.name)+'</td><td>'+esc(t.capacity)+'</td><td>'+esc(money(t.base_price,t.currency))+'</td><td>'+(t.website_published?"Publiée":"Privée")+'</td></tr>'));
+ el("roomTypesTable").innerHTML=table(["Catégorie","Capacité","Tarif / nuit","Publication"],state.roomTypes.map(t=>'<tr><td>'+esc(t.name)+'</td><td>'+esc(t.capacity)+'</td><td>'+esc(money(t.base_price,t.currency))+'</td><td><label class="seven-publish-toggle"><input type="checkbox" data-type-publish="'+esc(t.id)+'" '+(t.website_published?"checked":"")+'> Publier sur le site</label></td></tr>'));
 }
 
 function renderServices(){el("servicesTable").innerHTML=table(["Service","Type","Capacité","Publication"],state.services.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.kind)+'</td><td>'+esc(r.capacity)+'</td><td>'+ (r.active?"Visible":"Non publié") +'</td></tr>'));}
@@ -237,7 +305,7 @@ function renderManagement(){
  el("managementRole").textContent=roleNames[currentRole()]||"Responsable";
  const date=todayLocal();
  const staff=(state.allRoles||[]).filter(r=>r.active&&(r.hotel_id===state.hotelId));
- const pending=state.requests.filter(r=>r.status==="pending").length;
+ const pending=state.requests.filter(r=>r.status==="pending").length+state.stays.filter(r=>r.status==="pending"&&r.source==="public").length;
  const arrivals=state.stays.filter(s=>s.status==="confirmed"&&s.check_in===date).length;
  const cleaning=state.rooms.filter(r=>["cleaning","maintenance","out_of_service"].includes(r.operational_status)).length;
  el("managementPending").textContent=pending;
@@ -298,7 +366,7 @@ function render(){
  el("metricRooms").textContent=state.rooms.length;
  el("metricAvailable").textContent=state.rooms.filter(r=>r.active&&r.operational_status==="available"&&!stayBlocksRoom(r.id,date,tomorrow)).length;
  el("metricServices").textContent=state.services.length;
- renderRequests();renderStays();renderReceptionOptions();renderRooms();renderRoomTypes();
+ renderRequests();renderDirectBookings();renderStays();renderReceptionOptions();renderRooms();renderRoomTypes();renderRoomMedia();
  renderServices();renderAttendance();renderRFID();if(canManageAccess())renderRoles();if(canManage())renderManagement();if(leadership())renderProperties();
 }
 async function rememberDesktopRooms(){
@@ -326,14 +394,14 @@ async function rememberDesktopRooms(){
 async function loadAll(){
  const hotel=state.hotelId;
  try{
-  const [requests,rooms,roomTypes,stays,services,attendance,employees,rfid]=await Promise.all([
+  const [requests,rooms,roomTypes,stays,services,attendance,employees,rfid,media]=await Promise.all([
     fetchFor("seven_booking_requests"),fetchFor("rooms"),
     fetchFor("room_types"),fetchFor("reservations"),
     fetchFor("seven_service_resources"),fetchFor("seven_attendance_register"),
-    fetchFor("seven_employees"),fetchFor("seven_rfid_cards")
+    fetchFor("seven_employees"),fetchFor("seven_rfid_cards"),fetchFor("seven_media")
   ]);
   if(hotel!==state.hotelId)return;
-  Object.assign(state,{requests,rooms,roomTypes,stays,services,attendance,employees,rfid});
+  Object.assign(state,{requests,rooms,roomTypes,stays,services,attendance,employees,rfid,media});
   if(canManageAccess()){
    const r=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active");
    state.allRoles=r.data||[];
@@ -352,6 +420,7 @@ function readableError(e){
   room_not_ready_today:"Cette chambre n'est pas prête pour une arrivée aujourd'hui.",
   room_out_of_service:"Cette chambre est indisponible (maintenance ou hors service).",
   room_unavailable:"Cette chambre est déjà réservée sur ces dates.",
+  invalid_search:"Vérifiez les dates et le nombre de voyageurs.",
   capacity_exceeded:"La capacité de cette chambre est insuffisante.",
   invalid_stay_dates:"Dates de séjour invalides.",
   reservation_not_found:"Séjour introuvable.",
@@ -454,6 +523,11 @@ el("signOut").addEventListener("click",async()=>{setSidebarOpen(false);window.Se
 el("hotelSwitcher").addEventListener("change",async e=>{state.hotelId=e.target.value;el("userRole").textContent=roleNames[currentRole()]||"Personnel";el("serviceForm").hidden=!(state.view==="services"&&canManage());el("roleHotel").value=state.hotelId;el("inviteHotel").value=state.hotelId;roleNav();await loadAll();});
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.view)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.goto)));
+el("selectedBookingsTable").addEventListener("click",e=>{
+ const confirmed=e.target.closest("[data-direct-confirm]"),cancelled=e.target.closest("[data-direct-cancel]");
+ if(confirmed)decideDirectBooking(confirmed.dataset.directConfirm,"confirm");
+ else if(cancelled)decideDirectBooking(cancelled.dataset.directCancel,"cancel");
+});
 el("requestsTable").addEventListener("click",e=>{
  const assign=e.target.closest("[data-allocate]"),approve=e.target.closest("[data-service-approve]"),decline=e.target.closest("[data-decline]");
  if(assign)openAllocation(assign.dataset.allocate);
@@ -521,12 +595,18 @@ el("roomCreationForm").addEventListener("submit",async e=>{
  try{
   const result=await sb.from("rooms").insert({
    hotel_id:state.hotelId,room_type_id:typeId,number:String(d.get("number")).trim(),
-   floor:String(d.get("floor")||"").trim()||null,operational_status:"available",active:true
+   floor:String(d.get("floor")||"").trim()||null,description:String(d.get("description")||"").trim().slice(0,1000)||null,operational_status:"available",active:true
   }).select("id").maybeSingle();
   if(result.error)throw result.error;
   if(!result.data)throw new Error("not_authorized");
-  e.target.reset();flash("La chambre a été ajoutée à votre établissement.");
+  const newId=result.data.id;
+  e.target.reset();
   await loadAll();
+  try{
+   const uploaded=await uploadRoomPhotos(newId,d.getAll("photos"));
+   if(uploaded)await loadAll();
+   flash("Chambre enregistrée"+(uploaded?" avec "+uploaded+" photo(s).":". Ajoutez des photos avant sa publication sur le site."));
+  }catch(uploadError){console.error(uploadError);flash("Chambre enregistrée, mais photos non ajoutées : "+readableError(uploadError)+" Ajoutez-les depuis Photos & description.");}
  }catch(err){
   console.error(err);
   flash(err.code==="23505"?"Ce numéro de chambre existe déjà dans cet établissement.":readableError(err));
@@ -550,6 +630,54 @@ el("roomTypeForm").addEventListener("submit",async e=>{
  }catch(err){console.error(err);flash(readableError(err));}
 });
 el("roomsTable").addEventListener("change",e=>{if(e.target.matches("[data-room]"))setRoomStatus(e.target.dataset.room,e.target.value);});
+el("roomsTable").addEventListener("click",e=>{
+ const b=e.target.closest("[data-room-edit]");if(!b||!canManage())return;
+ el("roomPresentationId").value=b.dataset.roomEdit;renderRoomMedia();
+ el("roomPresentationPanel").scrollIntoView({behavior:"smooth",block:"start"});
+});
+el("roomPresentationId").addEventListener("change",renderRoomMedia);
+el("roomPresentationForm").addEventListener("submit",async e=>{
+ e.preventDefault();if(!canManage()||!navigator.onLine)return flash("Connexion et droits de gérant nécessaires.");
+ const id=el("roomPresentationId").value,room=state.rooms.find(r=>r.id===id&&r.hotel_id===state.hotelId);
+ if(!room)return flash("Choisissez une chambre.");
+ const btn=el("roomPresentationSave");btn.disabled=true;
+ try{
+  const description=el("roomPresentationDescription").value.trim();
+  const update=await sb.from("rooms").update({description:description||null}).eq("id",id).eq("hotel_id",state.hotelId).select("id").single();
+  if(update.error)throw update.error;
+  const photos=el("roomPresentationPhotos").files;const uploaded=await uploadRoomPhotos(id,photos);
+  el("roomPresentationPhotos").value="";
+  flash("Présentation enregistrée"+(uploaded?" — "+uploaded+" photo(s) ajoutée(s).":"."));
+  await loadAll();
+ }catch(error){console.error("Room presentation failed",error);flash(readableError(error)+" Si des photos étaient déjà enregistrées, vérifiez la galerie.");await loadAll();}
+ finally{btn.disabled=false;}
+});
+el("roomPhotoGallery").addEventListener("click",async e=>{
+ const b=e.target.closest("[data-photo-delete]");if(!b||!canManage())return;
+ const media=state.media.find(m=>m.id===b.dataset.photoDelete&&m.hotel_id===state.hotelId&&m.room_id===el("roomPresentationId").value);
+ if(!media||!window.confirm("Supprimer cette photo de la chambre ?"))return;
+ try{
+  const del=await sb.from("seven_media").delete().eq("id",media.id).eq("hotel_id",state.hotelId);
+  if(del.error)throw del.error;
+  const storage=await sb.storage.from(ROOM_BUCKET).remove([media.storage_path]);
+  if(storage.error)console.warn("Storage cleanup failed",storage.error.message);
+  await loadAll();flash("Photo retirée.");
+ }catch(error){console.error(error);flash(readableError(error));}
+});
+el("roomTypesTable").addEventListener("change",async e=>{
+ const field=e.target.closest("[data-type-publish]");if(!field||!canManage())return;
+ const t=state.roomTypes.find(t=>t.id===field.dataset.typePublish&&t.hotel_id===state.hotelId);
+ if(!t)return;
+ if(field.checked&&!state.rooms.some(r=>r.active&&r.room_type_id===t.id&&roomMedia(r.id).length>0)){
+  field.checked=false;flash("Ajoutez au moins une photo à une chambre de cette catégorie avant de publier.");return;
+ }
+ field.disabled=true;
+ try{
+  const res=await sb.from("room_types").update({website_published:field.checked}).eq("id",t.id).eq("hotel_id",state.hotelId).select("id").single();
+  if(res.error)throw res.error;
+  await loadAll();flash(field.checked?"Catégorie publiée : les chambres photographiées sont visibles aux dates disponibles.":"Catégorie retirée du site.");
+ }catch(error){console.error(error);field.checked=!field.checked;flash(readableError(error));}finally{field.disabled=false;}
+});
 el("serviceForm").addEventListener("submit",async e=>{e.preventDefault();if(!canManage()||!navigator.onLine)return flash("Action impossible hors connexion ou sans autorisation.");const d=new FormData(e.target);const r=await sb.from("seven_service_resources").insert({hotel_id:state.hotelId,name:String(d.get("name")).trim(),kind:String(d.get("kind")),capacity:Number(d.get("capacity")),active:false});if(r.error)return flash(r.error.message);e.target.reset();flash("Espace enregistré, non publié tant que ses informations ne sont pas validées.");await loadAll();});
 el("attendanceStatus").addEventListener("change",e=>{
  const work=e.target.value==="present"||e.target.value==="late";

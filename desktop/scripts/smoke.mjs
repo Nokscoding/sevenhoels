@@ -46,6 +46,13 @@ assert.ok(!preload.includes("ipcRenderer.send("),"Ne pas exposer l'IPC brut");
 assert.ok(offline.includes("readSnapshot"),"Consultation hors connexion non branchée");
 assert.ok(build.includes("vendor/supabase.js"),"Bundle Supabase local absent");
 assert.ok(build.includes("desktop-ui.css"),"Bundled CSS for desktop absent");
+for(const key of ["roomPresentationPanel","roomPhotoGallery","selectedBookingsTable"]){
+ assert.ok(html.includes('id="'+key+'"'),"Missing room and booking component: "+key);
+}
+for(const key of ["seven_media","decideDirectBooking","uploadRoomPhotos","data-type-publish"]){
+ assert.ok(app.includes(key),"Missing room and booking behavior: "+key);
+}
+assert.ok(build.includes("inventory.css"),"Windows build must copy the new hotel photo gallery stylesheet");
 assert.ok(build.includes("SEVEN_ADMIN_SOURCE_DIR"),"Source du portail admin séparé absente");
 const updateController=await read("desktop/updates.cjs");
 const updateUI=await read("desktop/update-ui.js");
