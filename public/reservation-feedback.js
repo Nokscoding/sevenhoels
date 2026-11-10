@@ -19,13 +19,20 @@
   const dialog=modal();
   dialog.dataset.result=ok?"success":"error";
   dialog.querySelector(".feedback-symbol").textContent=ok?"✓":"!";
-  dialog.querySelector("#feedbackTitle").textContent=ok?"Votre réservation a été enregistrée":"Votre réservation n’a pas été enregistrée";
+  dialog.querySelector("#feedbackTitle").textContent=ok?"Réservation enregistrée !":"Réservation non enregistrée";
   dialog.querySelector("#feedbackText").textContent=message||(ok?
-    "Notre équipe va vous contacter au numéro ou à l’adresse indiqués pour vérifier les disponibilités et confirmer les détails. Aucun paiement n’a été prélevé.":
+    "Votre réservation a bien été reçue et reste en attente de confirmation. Notre équipe vous contactera par téléphone ou par e-mail pour vérifier les disponibilités. Aucun paiement n’a été prélevé.":
     "Un problème est survenu. Vérifiez votre connexion et réessayez. Aucun paiement n’a été prélevé.");
   if(!dialog.open)dialog.showModal();
  }
- window.SevenReservationFeedback={show};
+ function explainError(err){
+  if(!navigator.onLine)return "Vous semblez être hors connexion. Votre réservation n’a pas été envoyée. Reconnectez-vous puis réessayez.";
+  const code=String(err?.code||"");
+  if(code==="23514"||code==="22007")return "Veuillez vérifier les dates et les informations saisies, puis réessayer.";
+  if(code==="42501")return "La réservation ne peut pas être enregistrée actuellement. Réessayez plus tard ou contactez l’établissement.";
+  return "Un problème technique a empêché l’enregistrement. Votre réservation n’a pas été confirmée : réessayez ou contactez l’établissement.";
+ }
+ window.SevenReservationFeedback={show,explainError};
  function animate(){
   if(!("IntersectionObserver" in window)||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
   const obs=new IntersectionObserver(entries=>{for(const item of entries){

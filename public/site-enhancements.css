@@ -39,3 +39,19 @@ a,button{ -webkit-tap-highlight-color:transparent }
 .seven-footer .footer-bottom a:hover{text-decoration:underline}
 @media(max-width:700px){.seven-footer{padding:50px 7% 26px}.seven-footer .footer-layout{grid-template-columns:1fr 1fr;gap:34px}.seven-footer .footer-layout>div:first-child{grid-column:1/-1}.seven-footer .footer-bottom{margin-top:36px}.reservation-feedback .feedback-inner{padding:33px 24px 28px}}
 @media(prefers-reduced-motion:reduce){.hero-image,.hotel-hero>img,.hero-content,.reservation-feedback[open]{animation:none!important}.reveal-on-scroll{opacity:1;transform:none;transition:none}.btn,.property-card,.room-card,.experience,.property-media img,.room-card>img{transition:none}}
+
+/* Refined motion and visible feedback: scroll, interactive elements, booking CTA. */
+.header .nav a{position:relative;transition:color .25s ease}
+.header .nav a::after{content:"";position:absolute;left:0;right:100%;bottom:-6px;height:1px;background:var(--seven-brass);transition:right .36s cubic-bezier(.2,.7,.2,1)}
+.header .nav a:hover::after,.header .nav a:focus-visible::after{right:0}
+.btn:not(:disabled):active,.property-card-cta:active{transform:translateY(1px) scale(.99)}
+.btn:focus-visible,.feedback-close:focus-visible,.footer-links a:focus-visible{outline:3px solid #d8b875;outline-offset:4px}
+.search-panel,.hotel-hero .hero-content{animation:sevenPanelEnter .7s cubic-bezier(.2,.7,.2,1) both}
+@keyframes sevenPanelEnter{from{opacity:.65;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.reservation-feedback[data-result="success"][open] .feedback-symbol{animation:sevenSuccessPop .55s cubic-bezier(.2,1.5,.4,1) .15s both}
+.reservation-feedback[data-result="error"][open] .feedback-symbol{animation:sevenErrorPop .42s ease-out .12s both}
+@keyframes sevenSuccessPop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.13);opacity:1}100%{transform:scale(1)}}
+@keyframes sevenErrorPop{0%{transform:scale(.7);opacity:.3}65%{transform:scale(1.07);opacity:1}100%{transform:scale(1)}}
+.seven-footer .footer-bottom a{display:inline-flex;align-items:center;padding:4px 0;min-height:24px}
+.seven-footer .footer-bottom a:focus-visible{outline:2px solid #e4c38e;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.search-panel,.hotel-hero .hero-content,.reservation-feedback .feedback-symbol{animation:none!important}.header .nav a::after{transition:none}}
