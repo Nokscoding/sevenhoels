@@ -68,6 +68,8 @@ jobs:
             npm run dist:win
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test actual Electron desktop layout (CSS and modules)
+        run: npm run test:layout
       - name: Verify installer exists
         shell: pwsh
         run: |
@@ -82,5 +84,7 @@ jobs:
             release/*.exe
             release/*.yml
             release/*.blockmap
+            release/*Layout.png
+            release/*FAILED.png
           if-no-files-found: error
           retention-days: 14
