@@ -1,0 +1,41 @@
+/* Seven Gestion — contrast and layer fix, 2026-11.
+   Loaded last to avoid the overlapping neutral / green panels of the legacy theme. */
+:root{color-scheme:light;--seven-ink:#192f3b;--seven-muted:#657783;--seven-bg:#f5f7f8;--seven-panel:#ffffff;--seven-line:#dfe6e9;--seven-gold:#b9945e;}
+body:has(.app-shell:not([hidden])){background:var(--seven-bg);color:var(--seven-ink);}
+.app-shell{background:var(--seven-bg);color:var(--seven-ink);isolation:isolate;}
+.app-shell .sidebar{z-index:20;background:#182935;color:#dbe3e8;box-shadow:3px 0 20px #0f1e2910;}
+.app-shell .sidebar .side-link{color:#d9e3ea;background:transparent;border:1px solid transparent;min-height:44px;}
+.app-shell .sidebar .side-link:hover{background:#2d4656;color:#fff;}
+.app-shell .sidebar .side-link.active{background:#344f60;color:#fff;box-shadow:inset 3px 0 var(--seven-gold);}
+.app-shell .sidebar .group-label{color:#b6c5cd;}
+.app-shell .sidebar-brand span,.app-shell .sidebar-brand strong{color:#fff;}
+.app-shell .sidebar-brand small{color:#c8d3da;}
+.app-shell .workspace{background:var(--seven-bg);min-width:0;}
+.app-shell .topbar{z-index:10;position:relative;background:#fff;border-bottom:1px solid var(--seven-line);box-shadow:0 3px 18px #172d3810;}
+.app-shell .topbar select{background:#fff;color:#253b49;border-color:#d7e0e4;}
+.app-shell .main{color:var(--seven-ink);min-width:0;}
+.app-shell .welcome h1,.app-shell .panel h2,.app-shell .metric strong{color:var(--seven-ink);}
+.app-shell .welcome p,.app-shell .hint,.app-shell .message-note{color:#5b6f7d;}
+.app-shell .panel,.app-shell .metric,.app-shell .management-card{background:#fff;color:var(--seven-ink);border:1px solid var(--seven-line);box-shadow:0 12px 34px #182d3910;}
+.app-shell .metric>span,.app-shell .management-card>span{color:#526a78;}
+.app-shell .panel p{color:#5e7280;}
+.app-shell .management-hero{background:linear-gradient(130deg,#182b38,#274555 75%,#735b42);color:#fff;}
+.app-shell .management-hero h2{color:#fff;}
+.app-shell .management-hero p{color:#e3edf0;}
+.app-shell .management-role{color:#ffebbd;background:#ffffff14;border-color:#d2b584;}
+.app-shell .primary,.app-shell .action-primary{background:#1d3a4a;color:#fff;border-color:#1d3a4a;}
+.app-shell .primary:hover,.app-shell .action-primary:hover{background:#30576a;color:#fff;}
+.app-shell .form-row input,.app-shell .form-row select,.app-shell .form-row textarea{background:#fff;color:#172d3b;border:1px solid #cbd7dd;min-height:43px;}
+.app-shell .form-row input:focus,.app-shell .form-row select:focus,.app-shell .form-row textarea:focus{outline:2px solid #b89b71;outline-offset:1px;}
+.app-shell .form-row label{color:#293e4a;}
+.app-shell .table-container{isolation:isolate;max-width:100%;}
+.app-shell table{background:#fff;color:#253d4a;}
+.app-shell thead{background:#edf2f4;color:#304a58;}
+.app-shell tbody tr:nth-child(even){background:#f8fafb;}
+.app-shell tbody tr:hover{background:#f0f5f7;}
+.app-shell th,.app-shell td{border-color:#e4eaed;}
+.app-shell .contact-actions a{color:#245b79;text-decoration:underline;text-underline-offset:3px;}
+.app-shell .status{font-weight:700;}
+.app-shell .user-role{color:#725525;background:#f6ebd6;}
+@media(max-width:760px){.app-shell .sidebar{z-index:90}.app-shell .topbar{z-index:4}.app-shell .main{padding-left:15px;padding-right:15px}.app-shell .panel{padding:18px}.app-shell .panel-heading{flex-wrap:wrap;gap:12px}}
+@media(prefers-reduced-motion:reduce){.app-shell *{scroll-behavior:auto!important}}

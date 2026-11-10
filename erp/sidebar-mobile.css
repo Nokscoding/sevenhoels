@@ -1,0 +1,66 @@
+/* Seven Gestion — desktop menu scrolling & mobile swipe drawer */
+.app-shell .sidebar{
+ overflow-y:auto;
+ overflow-x:hidden;
+ overscroll-behavior-y:contain;
+ -webkit-overflow-scrolling:touch;
+ scrollbar-width:thin;
+ scrollbar-color:#567181 #182b37;
+ touch-action:pan-y;
+}
+.app-shell .sidebar::-webkit-scrollbar{width:5px}
+.app-shell .sidebar::-webkit-scrollbar-thumb{background:#4b6878;border-radius:20px}
+.app-shell .sidebar::-webkit-scrollbar-track{background:transparent}
+.app-shell .sidebar .side-group{flex-shrink:0}
+.app-shell .sidebar .sidebar-brand{flex-shrink:0}
+.app-shell .sidebar .sidebar-bottom{flex-shrink:0;min-height:110px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.seven-sidebar-backdrop{display:none}
+@media(max-width:750px){
+ .app-shell .sidebar{
+  position:fixed!important;
+  top:0!important;bottom:0!important;left:0!important;
+  width:min(85vw,325px)!important;max-width:325px;
+  height:100dvh!important;max-height:100dvh!important;
+  transform:translate3d(-108%,0,0);
+  transition:transform .28s cubic-bezier(.2,.8,.2,1),visibility .28s;
+  visibility:hidden;pointer-events:none;z-index:100!important;
+  box-shadow:8px 0 42px #081b2740;
+  padding-top:calc(25px + env(safe-area-inset-top,0px));
+ }
+ .app-shell .sidebar.open{
+  transform:translate3d(0,0,0);
+  visibility:visible;pointer-events:auto;
+ }
+ .seven-sidebar-backdrop{
+  display:block;position:fixed;inset:0;z-index:99;
+  background:rgba(7,22,31,.58);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .26s ease,visibility .26s ease;
+ }
+ .seven-sidebar-backdrop.is-visible{
+  opacity:1;visibility:visible;pointer-events:auto;
+ }
+ body.seven-drawer-open{overflow:hidden}
+ .app-shell .mobile-nav{
+  display:grid;place-items:center;
+  width:45px;height:45px;min-width:45px;
+  padding:0;border:1px solid #dce6e9;
+  border-radius:12px;background:#f7fafb;color:#203b4a;
+  font-size:initial;cursor:pointer;touch-action:manipulation;
+ }
+ .app-shell .mobile-nav[aria-expanded="true"]{background:#e8f0f3;color:#173542}
+ .app-shell .sidebar .side-link{
+  min-height:45px;
+  padding-top:12px;padding-bottom:12px;
+  touch-action:pan-y;
+ }
+ .app-shell .sidebar .side-group{margin-bottom:22px}
+ .app-shell .sidebar .sidebar-bottom{margin-top:auto;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+}
+@media(min-width:751px){
+ .seven-sidebar-backdrop{display:none!important}
+ .app-shell .sidebar{max-height:100vh;overflow-y:auto}
+}
+@media(prefers-reduced-motion:reduce){
+ .app-shell .sidebar,.seven-sidebar-backdrop{transition:none!important}
+}
