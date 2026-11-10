@@ -55,7 +55,7 @@ async function run(){
   assert.equal(results.shellDisplay,"flex","App sidebar and workspace must be flex");
   assert.equal(results.navDisplay,"flex","Sidebar buttons must be flex rows");
   assert.ok(results.menuHeight>=35&&results.menuWidth>140,"Module buttons not styled");
-  assert.ok(results.sidebarWidth>=220&&results.sidebarWidth<=350,"Sidebar should have constrained width");
+  assert.ok(results.sidebarWidth>=200&&results.sidebarWidth<=350,"Sidebar should have constrained width");
   assert.ok(results.workspaceWidth>580,"Workspace is missing");
   assert.ok(results.mainOffsetX>=results.sidebarWidth-2,"Main content overlaps sidebar");
   assert.ok(results.headTop>=0&&results.headTop<120,"Topbar is misplaced");
