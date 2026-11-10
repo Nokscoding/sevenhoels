@@ -55,3 +55,107 @@ a,button{ -webkit-tap-highlight-color:transparent }
 .seven-footer .footer-bottom a{display:inline-flex;align-items:center;padding:4px 0;min-height:24px}
 .seven-footer .footer-bottom a:focus-visible{outline:2px solid #e4c38e;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.search-panel,.hotel-hero .hero-content,.reservation-feedback .feedback-symbol{animation:none!important}.header .nav a::after{transition:none}}
+
+
+/* Seven Hotels — shared mobile refinement, all public pages, 2026-11 */
+.seven-arrow{display:inline-block;flex:none;width:1.05em;height:1.05em;vertical-align:-.13em;stroke:currentColor;fill:none;pointer-events:none;transition:transform .24s ease}
+a:hover .seven-arrow,button:hover .seven-arrow{transform:translate(2px,-2px)}
+.seven-menu-icon{display:block;width:25px;height:25px;stroke:currentColor}
+button{touch-action:manipulation}
+@media(max-width:760px){
+ html{scroll-padding-top:84px}body{overflow-x:clip}
+ .notice{text-align:center;line-height:1.5;font-size:9px;letter-spacing:1.6px;padding:9px 12px}
+ .header{position:sticky;top:0;z-index:30;height:72px;padding:0 19px;background:#fff;box-shadow:0 7px 22px #14202810}
+ .header .brand{gap:9px}.header .brand-icon{width:42px;height:42px}
+ .header .brand-name{font-size:16px;letter-spacing:3px}.header .brand-name small{font-size:7px;letter-spacing:1.7px}
+ .header .menu-btn{display:grid;place-items:center;width:44px;height:44px;border:1px solid #e8e4dc;border-radius:12px;background:#f9f8f5;color:#1f3239;font-size:initial}
+ .header .nav{position:absolute;top:100%;left:12px;right:12px;padding:13px;z-index:40;background:#fff;border:1px solid #ece9e3;box-shadow:0 20px 55px #1222262e;border-radius:0 0 17px 17px}
+ .header .nav.open{display:flex;flex-direction:column;gap:1px}
+ .header .nav a{display:flex;align-items:center;padding:13px 15px;min-height:46px;border-radius:9px;color:#243b43;font-size:14px}
+ .header .nav a:hover{background:#f4f1e9;color:#77603f}.header .nav a::after{display:none}
+ .hero{height:clamp(575px,76svh,740px);min-height:575px}
+ .hero-image{background-position:54% center}
+ .hero-shade{background:linear-gradient(90deg,#091516e8 0%,#081113a1 68%,#08111342),linear-gradient(0deg,#0a10146b 0%,transparent 55%)}
+ .hero-content{padding:78px 24px 113px;justify-content:center;max-width:620px}
+ .hero .eyebrow{font-size:9px;letter-spacing:1.6px;max-width:330px;line-height:1.8}
+ .hero h1{font-size:clamp(45px,10.4vw,68px);line-height:1.1;margin:21px 0 17px;letter-spacing:-1.8px}
+ .hero p{max-width:420px;font-size:14px;line-height:1.7;color:#f0f0ed}
+ .hero-actions{flex-direction:column;align-items:stretch;gap:18px;margin-top:29px;width:min(100%,370px)}
+ .hero-actions .btn{justify-content:space-between;min-height:54px;border-radius:11px}
+ .hero-actions .text-link{display:inline-flex;align-items:center;gap:11px;min-height:33px;font-size:13px;color:#f5e7ce}
+ .hero-index{bottom:61px;right:24px;font-size:9px}
+ .search-panel{z-index:5;position:relative;display:block;margin:-43px 16px 28px;padding:25px 22px;background:#fff;border:1px solid #f1eee7;border-radius:17px;box-shadow:0 20px 44px #17262e24}
+ .search-intro h2{font-size:28px;line-height:1.17}
+ .quick-types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:23px 0 18px}
+ .quick{min-height:46px;white-space:normal;border-radius:10px;padding:11px 9px;font-size:12px;line-height:1.4}
+ .quick-cta{width:100%;min-height:49px;border-radius:10px;justify-content:space-between}
+ .section{padding:68px 24px}
+ .section h2{font-size:clamp(36px,8vw,49px);letter-spacing:-1px;line-height:1.18}
+ .intro,.contact{grid-template-columns:1fr;gap:25px}
+ .intro-copy p,.contact p{font-size:14px;line-height:1.8}
+ .section-heading{display:block;margin-bottom:26px}
+ .section-heading p{max-width:530px;font-size:13px;margin:12px 0 0;line-height:1.7}
+ .property-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ .property-card{border-radius:15px;box-shadow:0 8px 27px #17232b12}
+ .property-media{aspect-ratio:4/3}
+ .property-body{padding:19px}.property-body h3{font-size:clamp(23px,4vw,28px)}.property-body p{font-size:12px;min-height:0}
+ .property-card-cta{display:inline-flex;align-items:center;gap:7px;min-height:26px}
+ .experiences-section{padding:6px 0 68px}.experiences-section .section{padding-bottom:30px}
+ .experiences-grid{grid-template-columns:1fr;gap:16px;padding:0 18px}
+ .experience,.experience-main{grid-column:auto;height:320px;border-radius:16px}
+ .experience>div{left:22px;right:22px;bottom:22px}.experience h3,.experience-main h3{font-size:34px}
+ .statement{padding:73px 22px}.statement p{font-size:clamp(35px,7.6vw,49px)}
+ .booking-dialog{width:calc(100vw - 24px);max-width:620px;max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;border-radius:18px;padding:25px 22px}
+ .modal-head h2{font-size:clamp(25px,6vw,30px);line-height:1.15}
+ .form-grid{grid-template-columns:1fr;gap:15px}
+ .form-grid input,.form-grid select,.form-grid textarea{font-size:16px;min-height:47px;border-radius:9px}
+ .booking-dialog .submit{min-height:50px;border-radius:10px}
+ .seven-footer{padding:55px 24px 26px}.seven-footer .footer-layout{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+ .seven-footer .footer-layout>div:first-child{grid-column:1/-1}
+ .seven-footer .footer-bottom{gap:12px;margin-top:38px}
+ .seven-footer .footer-bottom small{font-size:11px;line-height:1.7}
+ .masthead{position:sticky;top:0;z-index:30;min-height:70px;padding:12px 18px;background:#fff;gap:9px;box-shadow:0 8px 28px #131e2213}
+ .masthead .brand{gap:8px;font-size:clamp(13px,3.1vw,18px);letter-spacing:2px;min-width:0}
+ .masthead .brand img{width:38px;height:38px;flex:none}.masthead .brand small{letter-spacing:1.3px}
+ .masthead .btn{flex:none;min-height:41px;padding:10px 13px;border-radius:9px;font-size:11px;gap:7px;white-space:nowrap}
+ .hotel-hero{height:clamp(540px,78svh,690px);min-height:540px}
+ .hotel-hero>img{object-position:52% center}
+ .hotel-hero .hero-overlay{background:linear-gradient(90deg,#0b1719dd,#0b17195e 95%),linear-gradient(0deg,#0b171988,transparent 56%)}
+ .hotel-hero .hero-content{max-width:590px;margin:0;padding:55px 24px 84px}
+ .hotel-hero .hero-content h1{font-size:clamp(56px,15vw,84px);line-height:1.03;margin:20px 0}
+ .hotel-hero .hero-content p{font-size:14px;line-height:1.75}
+ .hotel-hero .hero-actions{width:min(100%,370px);gap:19px;align-items:stretch;margin-top:29px}
+ .hotel-hero .hero-actions .btn{min-height:52px;justify-content:space-between}
+ .hotel-hero .hero-actions .quiet{font-size:12px;align-self:flex-start;color:#f4eadb}
+ .hotel-hero .hero-bottom{left:24px;right:24px;bottom:22px;font-size:9px;letter-spacing:1px}
+ .section.intro{grid-template-columns:1fr;gap:30px}.intro-frame{height:320px;border-radius:14px}
+ .rooms-wrap .section{padding-top:65px;padding-bottom:70px}
+ .room-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ .room-card{border-radius:15px;box-shadow:0 9px 28px #17232b0f}
+ .room-card>img{height:230px}.room-content{padding:20px}.room-content h3{font-size:26px}
+ .room-content p{font-size:12px;line-height:1.8;min-height:0}
+ .room-foot{flex-wrap:wrap}.room-foot button{display:inline-flex;gap:7px;align-items:center}
+ .gallery{height:390px;gap:10px}.gallery-secondary{gap:10px}.gallery-secondary img{height:190px}
+ .services{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+ .service{min-height:0;padding:24px;border-radius:14px}
+ .cta{padding:76px 24px}.cta h2{font-size:clamp(36px,8vw,49px)}
+ .disclaimer{text-align:left}
+}
+@media(max-width:535px){
+ .property-grid,.room-grid,.services{grid-template-columns:1fr}
+ .property-media{aspect-ratio:1.4/1}.property-body h3{font-size:27px}
+ .room-card>img{height:250px}.room-content{padding:23px}
+}
+@media(max-width:390px){
+ .notice{font-size:8px;letter-spacing:1.2px}
+ .header{padding:0 15px}.header .brand-name{font-size:15px;letter-spacing:2.5px}
+ .section{padding-left:19px;padding-right:19px}
+ .hero-content{padding-left:20px;padding-right:20px}.hero h1{font-size:43px}
+ .search-panel{margin-left:10px;margin-right:10px;padding:22px 18px}
+ .masthead{padding:11px 12px}.masthead .brand{font-size:12px;letter-spacing:1.2px}
+ .masthead .brand img{width:33px;height:33px}
+ .masthead .btn{padding:9px 10px;font-size:10px;min-height:39px}
+ .hotel-hero .hero-content{padding-left:20px;padding-right:20px}
+ .hotel-hero .hero-content h1{font-size:56px}
+}
+@media(prefers-reduced-motion:reduce){.seven-arrow{transition:none}}
