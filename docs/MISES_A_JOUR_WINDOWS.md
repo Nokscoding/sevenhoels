@@ -50,3 +50,23 @@ Les versions en brouillon **ne sont pas détectées** par les logiciels en circu
 L'interface, l'API de mises à jour et les tests ont été implémentés. Le **workflow GitHub Actions Windows doit encore terminer une exécution réussie**, et une **mise à jour réelle de 0.2.0 vers 0.2.1** doit être testée sur Windows avant de parler de déploiement validé.
 
 En cas d'échec de GitHub Actions avant la première étape du job, vérifier les limites d'utilisation et la facturation GitHub Actions du compte, la configuration des permissions des workflows et l'activation des runners Windows. Une exécution non démarrée n'est **pas** une compilation validée.
+
+## Solution de secours si GitHub Actions refuse de démarrer
+Un script PowerShell est fourni pour compiler directement sur un PC Windows :
+
+```powershell
+cd sevenhoels
+.\desktop\scripts\build-local.ps1
+```
+
+Ce script utilise la dernière copie locale du dépôt administrateur, installe les dépendances Node.js, vérifie le code et produit le **véritable installateur Windows NSIS**. Il n'envoie aucun fichier en ligne par défaut.
+
+Pour créer un brouillon GitHub Releases depuis Windows **sans GitHub Actions**, configurer le jeton GitHub **uniquement dans l'environnement local** `GH_TOKEN` avec les droits nécessaires à ce dépôt, puis lancer :
+
+```powershell
+.\desktop\scripts\build-local.ps1 -PrepareRelease
+```
+
+Ne jamais envoyer ce jeton par e-mail ou dans une conversation et ne jamais le sauvegarder dans le dépôt. Testez puis publiez le brouillon GitHub Release ; les postes installés le détecteront au prochain démarrage.
+
+**Incident constaté le 10 novembre 2026 :** les workflows Actions Windows *et* Linux échouent avant toute étape (liste de steps vide), sans journal de compilation. Cela suggère une restriction d'exécution des runners ou un problème de quotas, **pas une erreur de compilation démontrée**. Vérifier les annotations des exécutions Actions et les limites de facturation / permissions du dépôt avant d'essayer de nouveau.
