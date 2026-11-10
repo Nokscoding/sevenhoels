@@ -76,6 +76,22 @@ jobs:
           $exe = Get-ChildItem ../release -Filter "Seven-Gestion-Setup-*.exe"
           if (-not $exe) { throw "Installer Windows not built" }
           Write-Host "NSIS installer ready:" $exe.Name
+      - name: Create draft GitHub Release only after all desktop tests pass
+        if: ${{ success() && github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release(desktop):') }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $releaseDir = Join-Path (Resolve-Path ..).Path "release"
+          $installer = Join-Path $releaseDir "Seven-Gestion-Setup-$version.exe"
+          $manifest = Join-Path $releaseDir "latest.yml"
+          $blockmap = "$installer.blockmap"
+          if (-not (Test-Path $installer)) { throw "Installer absent" }
+          if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
+          if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
+          gh release create "v$version" "$installer" "$manifest" "$blockmap" --draft --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Correction de l'interface Windows et restauration des styles du portail Seven Gestion. Mise à jour à publier après validation sur un PC test."
+          if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
         if: always()
         uses: actions/upload-artifact@v4
