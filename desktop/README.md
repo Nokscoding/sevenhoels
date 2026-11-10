@@ -20,14 +20,16 @@ npm install
 npm start
 ```
 
-Pour créer un installateur Windows et une version portable :
+Pour créer un **installateur Windows NSIS**, capable de recevoir les mises à jour GitHub Releases :
 
 ```bash
 cd desktop
 npm run dist:win
 ```
 
-Les installateurs sont écrits dans le dossier `release/` de la racine du dépôt.
+L’installateur est écrit dans le dossier `release/` de la racine du dépôt.
+
+**Mises à jour intégrées :** vérification au lancement, proposition de téléchargement, progression et installation avec redémarrage après consentement. Le processus complet de publication est décrit dans [`../docs/MISES_A_JOUR_WINDOWS.md`](../docs/MISES_A_JOUR_WINDOWS.md).
 
 Le workflow `.github/workflows/seven-windows.yml` est également prévu pour construire les deux éditions via GitHub Actions Windows. L’installateur doit être signé avant diffusion commerciale pour limiter les alertes Windows SmartScreen.
 

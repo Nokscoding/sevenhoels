@@ -27,7 +27,7 @@
     "appId": "cd.sevenhotels.gestion",
     "productName": "Seven Gestion",
     "directories": {
-      "output": "../../release"
+      "output": "../release"
     },
     "asar": true,
     "files": [
