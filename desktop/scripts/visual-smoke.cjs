@@ -63,6 +63,39 @@ async function run(){
   await fs.mkdir(output,{recursive:true});
   const img=await win.webContents.capturePage();
   await fs.writeFile(path.join(output,"Seven-Gestion-Desktop-Layout.png"),img.toPNG());
+
+  // Mount the real production updater UI with a safe fake read-only bridge.
+  // Do not send any booking or authentication requests during this test.
+  const popup=await win.webContents.executeJavaScript(
+    '(async function(){'+
+    'document.getElementById("appShell").hidden=true;document.getElementById("loginScreen").hidden=false;'+
+    'const mock={phase:"available",currentVersion:"0.2.2",nextVersion:"0.2.3",percent:0,releaseNotes:"Fenêtre de mise à jour et progression améliorées."};'+
+    'window.sevenDesktop={getUpdateState:async()=>mock,checkForUpdates:async()=>({ok:true}),downloadUpdate:async()=>({ok:true}),installUpdate:async()=>true,onUpdateStatus:cb=>{window.__testUpdate=cb;return ()=>{}}};'+
+    'await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="./update-ui.js";script.onload=resolve;script.onerror=()=>reject(Error("update-ui.js not loadable"));document.body.append(script)});'+
+    'await new Promise(resolve=>setTimeout(resolve,80));'+
+    'const d=document.getElementById("sevenUpdateDialog");'+
+    'if(!d||!d.open)throw Error("Updater modal does not open on login");'+
+    'const rect=d.getBoundingClientRect();const overlay={width:rect.width,height:rect.height,open:d.open,title:document.getElementById("sevenUpdateTitle").textContent};'+
+    'window.__testUpdate({phase:"downloading",percent:46,transferred:47000000,total:100000000,bytesPerSecond:2700000,remainingSeconds:20});'+
+    'const downloading={percent:Number(document.getElementById("sevenUpdateProgress").value),visible:!document.getElementById("sevenUpdateProgressWrap").hidden,rate:document.getElementById("sevenUpdateSpeed").textContent,remaining:document.getElementById("sevenUpdateRemaining").textContent,modalOpen:d.open};'+
+    'return {overlay,downloading};})()',true
+  );
+  assert.ok(popup.overlay.width>=420&&popup.overlay.height>200,"Update popup is too small to notice");
+  assert.equal(popup.overlay.open,true,"Available update needs a prominent modal");
+  assert.equal(popup.downloading.percent,46,"Real progress percentage not visible");
+  assert.equal(popup.downloading.visible,true,"Progress bar must be shown");
+  assert.equal(popup.downloading.modalOpen,true,"Progress must stay visible as download starts");
+  assert.ok(popup.downloading.rate.includes("Mo/s"),"Download speed missing");
+  assert.ok(popup.downloading.remaining.includes("restantes"),"Remaining time missing");
+  const progressImage=await win.webContents.capturePage();
+  await fs.writeFile(path.join(output,"Seven-Gestion-Update-Progress.png"),progressImage.toPNG());
+  const ready=await win.webContents.executeJavaScript(
+    '(function(){window.__testUpdate({phase:"ready",percent:100,nextVersion:"0.2.3"});return {title:document.getElementById("sevenUpdateTitle").textContent,button:document.getElementById("sevenUpdatePrimary").textContent,open:document.getElementById("sevenUpdateDialog").open}})()',true
+  );
+  assert.equal(ready.open,true,"Completed download must show update popup");
+  assert.ok(ready.button.includes("Installer et redémarrer"),"Install/restart button missing");
+  console.log("Seven Windows update modal validated:",JSON.stringify({popup,ready}));
+
   console.log("Seven Electron layout OK:",JSON.stringify(results));
   app.exit(0);
  }catch(error){
