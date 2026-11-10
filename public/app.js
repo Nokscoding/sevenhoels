@@ -22,24 +22,68 @@ function render(){
  var options=properties.filter(function(p){return p.slug!=="seven-apartments";}).map(function(p){return '<option value="'+escapeText(p.id)+'" '+(!p.id?'disabled':'')+'>'+escapeText(p.name)+'</option>';}).join("");
  byId("hotelSelect").innerHTML='<option value="">Sélectionner un établissement</option>'+options;
 }
-function setKind(kind){currentKind=kind;byId("kindSelect").value=kind;var stay=kind==="stay"||kind==="apartment";byId("endDateWrap").hidden=!stay;byId("endDate").required=stay;byId("timeWrap").hidden=stay;document.querySelectorAll("[data-quick]").forEach(function(b){b.classList.toggle("active",b.dataset.quick===kind);});}
-function openBooking(kind,slug){setKind(kind||"stay");var hotel=properties.find(function(p){return p.slug===slug;});if(hotel)byId("hotelSelect").value=hotel.id;byId("bookingMessage").textContent="";byId("bookingMessage").className="";byId("bookingDialog").showModal();}
+
+var roomPicker=window.SevenRoomPicker.create({
+ sb:client,container:byId("availableRoomsPicker"),
+ getFilters:function(){
+  var h=properties.find(function(p){return p.id===byId("hotelSelect").value;});
+  var slugs={"seven-7":"seven7","seven-47":"47","seven-71":"71"};
+  return {slug:h?slugs[h.slug]||h.slug:"",start:byId("startDate").value,end:byId("endDate").value,guests:Number(byId("bookingForm").elements.guests.value)};
+ },
+ onChange:function(room){byId("selectedRoomLabel").textContent=room?"Chambre "+room.room_number+" sélectionnée · "+room.room_type_name:"Sélectionnez une chambre parmi les disponibilités.";}
+});
+function searchRooms(){return currentKind==="stay"?roomPicker.refresh():Promise.resolve(false);}
+function setKind(kind){currentKind=kind;byId("kindSelect").value=kind;byId("selectedRoomWrap").hidden=kind!=="stay";byId("bookingForm").elements.guests.max=kind==="stay"?"20":"1000";var stay=kind==="stay"||kind==="apartment";byId("endDateWrap").hidden=!stay;byId("endDate").required=stay;byId("timeWrap").hidden=stay;document.querySelectorAll("[data-quick]").forEach(function(b){b.classList.toggle("active",b.dataset.quick===kind);});}
+function openBooking(kind,slug){setKind(kind||"stay");var hotel=properties.find(function(p){return p.slug===slug;});if(hotel)byId("hotelSelect").value=hotel.id;byId("bookingMessage").textContent="";byId("bookingMessage").className="";byId("bookingDialog").showModal();searchRooms();}
 document.querySelectorAll("[data-book]").forEach(function(b){b.addEventListener("click",function(){openBooking(b.dataset.book);});});
 document.querySelectorAll("[data-quick]").forEach(function(b){b.addEventListener("click",function(){setKind(b.dataset.quick);});});
 byId("quickBook").addEventListener("click",function(){openBooking(currentKind);});
 byId("propertyGrid").addEventListener("click",function(e){var b=e.target.closest("[data-property]");if(b)openBooking(b.dataset.property==="seven-apartments"?"apartment":"stay",b.dataset.property);});
 byId("closeDialog").addEventListener("click",function(){byId("bookingDialog").close();});
 byId("bookingDialog").addEventListener("click",function(e){if(e.target===this)this.close();});
-byId("kindSelect").addEventListener("change",function(){setKind(this.value);});
+byId("kindSelect").addEventListener("change",function(){setKind(this.value);searchRooms();});
+byId("hotelSelect").addEventListener("change",searchRooms);
+byId("endDate").addEventListener("change",searchRooms);
+byId("bookingForm").elements.guests.addEventListener("change",searchRooms);
 byId("menuButton").addEventListener("click",function(){var n=byId("nav");n.classList.toggle("open");this.setAttribute("aria-expanded",n.classList.contains("open")?"true":"false");});
 document.querySelectorAll(".nav a").forEach(function(a){a.addEventListener("click",function(){byId("nav").classList.remove("open");});});
 var today=new Date();today.setHours(0,0,0,0);var iso=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
-byId("startDate").min=iso;byId("endDate").min=iso;byId("startDate").addEventListener("change",function(){byId("endDate").min=this.value;if(byId("endDate").value&&byId("endDate").value<=this.value)byId("endDate").value="";});
+byId("startDate").min=iso;byId("endDate").min=iso;byId("startDate").addEventListener("change",function(){byId("endDate").min=this.value;if(byId("endDate").value&&byId("endDate").value<=this.value)byId("endDate").value="";searchRooms();});
 byId("bookingForm").addEventListener("submit",async function(e){e.preventDefault();var msg=byId("bookingMessage"),btn=byId("submitBooking"),form=new FormData(this);msg.textContent="";msg.className="";if(form.get("website"))return;if(!client){msg.textContent="Le service de réservation est momentanément indisponible.";msg.className="error";window.SevenReservationFeedback?.show(false);return;}
 var kind=String(form.get("kind")),start=String(form.get("start_date")),end=String(form.get("end_date")||""),hid=String(form.get("hotel_id"));if(!hid){msg.textContent="Choisissez un établissement.";msg.className="error";window.SevenReservationFeedback?.show(false,"Veuillez choisir un établissement avant de continuer.");return;}
 if((kind==="stay"||kind==="apartment")&&(!end||end<=start)){msg.textContent="La date de départ doit être postérieure à l'arrivée.";msg.className="error";window.SevenReservationFeedback?.show(false,msg.textContent);return;}
 var payload={hotel_id:hid,kind:kind,guest_name:String(form.get("guest_name")||"").trim(),guest_phone:String(form.get("guest_phone")||"").trim(),guest_email:String(form.get("guest_email")||"").trim()||null,guests:Number(form.get("guests")),start_date:start,end_date:(kind==="stay"||kind==="apartment")?end:null,start_time:(kind==="stay"||kind==="apartment")?null:String(form.get("start_time")||"")||null,notes:String(form.get("notes")||"").trim()||null};
-btn.disabled=true;btn.textContent="Envoi en cours…";try{var res=await client.from("seven_booking_requests").insert(payload);if(res.error)throw res.error;this.reset();msg.textContent="Réservation enregistrée — confirmation après contact de notre équipe.";msg.className="success";byId("bookingDialog").close();window.SevenReservationFeedback?.show(true);}catch(err){console.error("Booking request error",err);msg.textContent="Votre réservation n'a pas été enregistrée. Vérifiez votre connexion et réessayez.";msg.className="error";window.SevenReservationFeedback?.show(false,window.SevenReservationFeedback?.explainError(err));}finally{btn.disabled=false;btn.textContent="Enregistrer ma réservation ";}});
+
+btn.disabled=true;btn.textContent="Envoi en cours…";
+try{
+ var reference="";
+ if(kind==="stay"){
+  var selected=roomPicker.selectedRoom();
+  if(!selected){msg.textContent="Choisissez une chambre disponible.";msg.className="error";return;}
+  var fresh=await roomPicker.refresh({preserveSelection:true});
+  if(!fresh||!roomPicker.selectedRoom()||roomPicker.selectedRoom().room_id!==selected.room_id)throw Error("room_unavailable");
+  var result=await client.rpc("seven_reserve_selected_room",{
+   p_room_id:selected.room_id,p_check_in:start,p_check_out:end,
+   p_guest_name:payload.guest_name,p_guest_phone:payload.guest_phone,p_guest_email:payload.guest_email,
+   p_guests:payload.guests,p_notes:payload.notes
+  });
+  if(result.error)throw result.error;
+  reference=result.data?.reference||"";
+ }else{
+  var response=await client.from("seven_booking_requests").insert(payload);
+  if(response.error)throw response.error;
+ }
+ this.reset();roomPicker.reset();msg.textContent="Réservation enregistrée — confirmation après contact de notre équipe.";msg.className="success";
+ byId("bookingDialog").close();
+ window.SevenReservationFeedback?.show(true,"Votre réservation "+(reference?"n° "+reference+" ":"")+"a été enregistrée. La chambre choisie est bloquée pour vos dates. Notre équipe vous contactera avant confirmation.");
+}catch(err){
+ console.error("Seven booking failed",err);
+ var unavailable=String(err?.message||"").includes("room_unavailable")||String(err?.code||"")==="23P01";
+ msg.textContent=unavailable?"Cette chambre est déjà réservée. Choisissez-en une autre.":"Réservation non enregistrée. Réessayez.";
+ msg.className="error";
+ window.SevenReservationFeedback?.show(false,unavailable?msg.textContent:window.SevenReservationFeedback?.explainError(err));
+ if(kind==="stay")await roomPicker.refresh({preserveSelection:false});
+}finally{btn.disabled=false;btn.textContent="Enregistrer ma réservation ";}});
 async function loadProperties(){if(!client)return;var r=await client.from("hotels").select("id,slug,name,active").eq("active",true);if(r.error||!r.data)return;properties=fallback.map(function(p){var aliases={"seven-7":["seven7","seven-7"],"seven-47":["47","seven-47"],"seven-71":["71","seven-71"],"seven-apartments":["seven-apartments"]};var h=r.data.find(function(v){return (aliases[p.slug]||[p.slug]).includes(v.slug);});return Object.assign({},p,{id:h?h.id:""});});render();}
 render();setKind("stay");loadProperties().catch(function(e){console.error(e);});
 })();

@@ -1,0 +1,32 @@
+/* Seven — rooms with real availability and photo galleries */
+.seven-room-chooser{grid-column:1/-1;display:block;padding:20px 0 8px;border-top:1px solid #e4e6e2}
+.seven-room-chooser[hidden]{display:none!important}
+.seven-room-chooser h3{font:400 27px/1.25 Georgia,serif;color:#192d32;margin:0 0 8px}
+.seven-selected-label{color:#63757a;font-size:12px;margin:0 0 16px;line-height:1.6}
+.seven-room-choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:16px}
+.room-grid:has(.seven-room-choice-grid){display:block}
+.seven-select-room{min-width:0;background:white;border:1px solid #e3e6e0;border-radius:16px;overflow:hidden;box-shadow:0 10px 28px #11232b12;transition:transform .2s,box-shadow .2s}
+.seven-select-room:hover{transform:translateY(-2px);box-shadow:0 16px 35px #11232b20}
+.seven-select-room.is-selected{border:2px solid #b4925b}
+.seven-room-picture{height:200px;overflow:hidden;background:#e6eae7}
+.seven-room-cover{width:100%;height:100%;object-fit:cover;display:block}
+.seven-room-thumbs{display:flex;gap:5px;padding:5px;overflow:auto;background:#f6f7f6}
+.seven-room-thumbs img{height:52px;width:75px;object-fit:cover;flex:none;border-radius:5px}
+.seven-room-no-photo{height:180px;display:grid;place-items:center;color:#7a8381}
+.seven-select-room-copy{padding:19px;display:flex;flex-direction:column;gap:10px}
+.seven-room-kicker{font-size:10px;letter-spacing:2px;color:#a08254;font-weight:800}
+.seven-select-room-copy h3{font:400 27px/1.18 Georgia,serif;color:#1e3035;margin:0}
+.seven-select-room-copy p{color:#65777a;font-size:12px;line-height:1.75;margin:0;min-height:36px}
+.seven-room-facts{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#62757c;margin-top:auto}
+.seven-room-facts strong{font-size:14px;color:#21353b}
+.seven-room-select-btn{min-height:46px;border:0;background:#1b323b;color:white;font-weight:700;border-radius:9px;cursor:pointer}
+.seven-select-room.is-selected .seven-room-select-btn{background:#a1834f}
+.seven-inventory-empty{grid-column:1/-1;background:#f7faf9;border:1px dashed #cddbd8;border-radius:12px;margin:0;padding:23px;color:#627782;line-height:1.7;font-size:13px}
+.seven-room-search{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding:20px;background:#fff;border:1px solid #e5e8e3;border-radius:14px;margin-bottom:23px}
+.seven-room-search label{display:flex;flex-direction:column;gap:7px;flex:1;min-width:135px;color:#243b42;font-size:12px;font-weight:700}
+.seven-room-search input{width:100%;min-height:46px;padding:10px 12px;font-size:16px;color:#1e3038;border:1px solid #d6e0e1;border-radius:9px;background:#fff}
+.seven-room-search button{min-height:46px;border-radius:9px}
+.booking-dialog:has(#availableRoomsPicker){width:min(850px,96vw)}
+#availableRoomsPicker .seven-room-picture{height:160px}
+@media(max-width:650px){.seven-room-choice-grid{grid-template-columns:1fr}.seven-room-search{display:grid;grid-template-columns:1fr 1fr;padding:14px}.seven-room-search label{min-width:0}.seven-room-search button{grid-column:1/-1;width:100%}.booking-dialog:has(#availableRoomsPicker){width:calc(100vw - 20px);max-height:calc(100dvh - 24px);overflow:auto}}
+@media(prefers-reduced-motion:reduce){.seven-select-room{transition:none}.seven-select-room:hover{transform:none}}

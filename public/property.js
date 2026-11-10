@@ -32,7 +32,7 @@ $("roomsGrid").addEventListener("click",e=>{
  const btn=e.target.closest("[data-select-room]");if(!btn)return;
  const id=btn.dataset.selectRoom;
  openModal("stay");
- picker.choose(id);
+ picker.refresh({preserveSelection:false}).then(()=>picker.choose(id));
 });
 
 function setKind(v){kind=v;$("bookingKind").value=v;const stay=v==="stay";$("endWrap").hidden=!stay;$("endDate").required=stay;$("timeWrap").hidden=stay;$("selectedRoomWrap").hidden=!stay;$("bookingForm").elements.guests.max=stay?"20":"1000";$("modalTitle").textContent=stay?"Choisissez votre chambre":v==="restaurant"?"Réserver une table":v==="event"?"Votre événement":"Votre séance";}

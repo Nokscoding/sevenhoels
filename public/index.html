@@ -2,7 +2,7 @@
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#151719"><meta name="description" content="Seven Hotels & Apartments — hôtels, suites, appartements et expériences à réserver.">
 <title>Seven Hotels & Apartments | L'art de recevoir</title><link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://images.unsplash.com"><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./site-enhancements.css"></head>
+<link rel="preconnect" href="https://images.unsplash.com"><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./site-enhancements.css"><link rel="stylesheet" href="./room-picker.css"></head>
 <body>
 <div class="notice">SEVEN HOTELS & APARTMENTS <span>•</span> HOSPITALITÉ & EXPÉRIENCES</div>
 <header class="header"><a href="#accueil" class="brand" aria-label="Seven — accueil"><img class="brand-icon" src="./assets/seven-mark.svg" alt="" width="58" height="58"><span class="brand-name">SEVEN<small>HOTELS & APARTMENTS</small></span></a>
@@ -37,8 +37,9 @@
 <label>Adresse e-mail (facultatif) <input name="guest_email" type="email" maxlength="200" autocomplete="email"></label><label>Nombre de personnes <input name="guests" type="number" min="1" max="1000" value="2" required></label>
 <label>Date souhaitée <input name="start_date" id="startDate" type="date" required></label><label id="endDateWrap">Date de départ <input name="end_date" id="endDate" type="date"></label>
 <label id="timeWrap" hidden>Heure souhaitée <input name="start_time" type="time"></label>
+<div class="full seven-room-chooser" id="selectedRoomWrap"><h3>Choisissez une chambre disponible</h3><p class="seven-selected-label" id="selectedRoomLabel">Sélectionnez une chambre parmi les disponibilités.</p><div id="availableRoomsPicker" aria-live="polite"></div></div>
 <label class="full">Précisions (facultatif) <textarea name="notes" rows="3" maxlength="1200" placeholder="Précisions sur votre réservation…"></textarea></label>
 <input class="trap" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"></div>
 <p class="form-note">Votre réservation est enregistrée en attente de confirmation. Notre équipe va vous contacter pour vérifier les disponibilités. Aucun paiement n’est prélevé.</p>
 <div id="bookingMessage" role="status" aria-live="polite"></div><button class="btn btn-dark submit" type="submit" id="submitBooking">Enregistrer ma réservation <svg class="seven-arrow" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M8 5h11v11"/></svg></button></form></dialog>
-<script src="./config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script><script src="./reservation-feedback.js" defer></script><script src="./app.js" defer></script></body></html>
+<script src="./config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script><script src="./reservation-feedback.js" defer></script><script src="./room-picker.js" defer></script><script src="./app.js" defer></script></body></html>
