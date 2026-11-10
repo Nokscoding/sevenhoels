@@ -1,5 +1,7 @@
 "use strict";
-const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage} = require("electron");
+const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage,dialog} = require("electron");
+const {autoUpdater}=require("electron-updater");
+const {createUpdateController}=require("./updates.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const {pathToFileURL} = require("node:url");
@@ -9,6 +11,7 @@ const HOST="app";
 const ROOT=path.join(__dirname,"renderer");
 const CACHE_FILENAME="seven-offline-summary.enc";
 let mainWindow;
+let updateController;
 
 protocol.registerSchemesAsPrivileged([{
  scheme:SCHEME,privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true,corsEnabled:true}
@@ -123,7 +126,23 @@ else{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return app.getVersion();
   });
+  updateController=createUpdateController({
+   app,updater:autoUpdater,dialog,getWindow:()=>mainWindow
+  });
+  ipcMain.handle("seven:update-state",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return updateController.getState();
+  });
+  ipcMain.handle("seven:update-check",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return updateController.check(true);
+  });
+  ipcMain.handle("seven:update-install",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return updateController.install();
+  });
   createWindow();
+  updateController.start();
  });
  app.on("activate",()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
 }
