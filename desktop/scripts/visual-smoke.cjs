@@ -47,6 +47,7 @@ async function run(){
    'horizontalOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,'+
    'loadedStyles:[...document.styleSheets].map(s=>s.href||"inline")};})()',true
   );
+  console.log("Seven Electron computed layout:",JSON.stringify(results));
   assert.equal(results.bodyMargin,"0px","The base stylesheet is not applied");
   assert.equal(results.loginDisplay,"grid","Login layout must be a two-column grid");
   assert.ok(results.loginColumns>=2,"Login grid needs two columns");
