@@ -47,10 +47,32 @@ const csp=[
 html=html.replace("<head>","<head><meta http-equiv=\"Content-Security-Policy\" content=\""+csp+"\">");
 await fs.writeFile(path.join(dist,"index.html"),html);
 
-let css=await fs.readFile(path.join(dist,"style.css"),"utf8");
-// The desktop app must render offline, without waiting for Google Fonts.
-css=css.replace(/^@import\s+url\(['"]https:\/\/fonts\.googleapis\.com\/[^;]+;/,"");
-await fs.writeFile(path.join(dist,"style.css"),css);
+
+/* Bundle styles in their original order for desktop: the Google Fonts URL
+   contains semicolons in font weights, so do NOT remove up to first ";".
+   (Old broken logic turned the CSS into "500;600;..." in v0.2.0.) */
+const sheets=[];
+const linkPattern=/<link\s+rel="stylesheet"\s+href="\.\/([^"]+\.css)"\s*>/g;
+for(const match of html.matchAll(linkPattern)){
+ const name=match[1];
+ let css=await fs.readFile(path.join(dist,name),"utf8");
+ css=css.replace(/^@import\s+url\(\s*(['"])https:\/\/fonts\.googleapis\.com\/[^\r\n]*?\1\s*\)\s*;/,"");
+ if(css.includes("@import url('https://fonts.googleapis.com"))
+   throw Error("Google Fonts import not removed from "+name);
+ sheets.push("/* "+name+" */\n"+css);
+}
+if(sheets.length<6)throw Error("Seven desktop requires all admin CSS");
+const bundle=sheets.join("\n\n");
+if(!bundle.includes(".login-shell{display:grid")||
+   !bundle.includes(".app-shell{display:flex")||
+   !bundle.includes(".side-link{display:flex"))
+ throw Error("Missing base desktop layout rules");
+if(bundle.startsWith("500;")||bundle.includes("500;600;700&family="))
+ throw Error("Broken Google Fonts import");
+await fs.writeFile(path.join(dist,"desktop-ui.css"),bundle);
+html=html.replace(linkPattern,"");
+html=html.replace("</head>",'<link rel="stylesheet" href="./desktop-ui.css"></head>');
+await fs.writeFile(path.join(dist,"index.html"),html);
 
 await build({
  entryPoints:[path.join(desktop,"vendor-entry.js")],

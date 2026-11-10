@@ -1,6 +1,6 @@
 {
   "name": "seven-gestion-desktop",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Seven Hotels & Apartments — Gestion Windows",
   "main": "main.cjs",
@@ -12,7 +12,8 @@
     "dist:win": "npm run prepare:renderer && electron-builder --win nsis --publish never",
     "check": "node --check main.cjs && node --check updates.cjs && node --check preload.cjs && node --check offline.js && node --check update-ui.js && node --check scripts/build.mjs",
     "test": "node scripts/smoke.mjs && node scripts/updater.test.cjs",
-    "dist:release": "npm run prepare:renderer && electron-builder --win nsis --publish always"
+    "dist:release": "npm run prepare:renderer && electron-builder --win nsis --publish always",
+    "test:layout": "electron scripts/visual-smoke.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",

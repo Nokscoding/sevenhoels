@@ -45,6 +45,7 @@ assert.ok(preload.includes("contextBridge.exposeInMainWorld"),"Pont IPC manquant
 assert.ok(!preload.includes("ipcRenderer.send("),"Ne pas exposer l'IPC brut");
 assert.ok(offline.includes("readSnapshot"),"Consultation hors connexion non branchée");
 assert.ok(build.includes("vendor/supabase.js"),"Bundle Supabase local absent");
+assert.ok(build.includes("desktop-ui.css"),"Bundled CSS for desktop absent");
 assert.ok(build.includes("SEVEN_ADMIN_SOURCE_DIR"),"Source du portail admin séparé absente");
 const updateController=await read("desktop/updates.cjs");
 const updateUI=await read("desktop/update-ui.js");
