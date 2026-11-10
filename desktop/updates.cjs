@@ -1,120 +1,118 @@
 "use strict";
-/* The updater runs only in Electron's trusted main process.
- * No update URL, package path, or installer command is accepted from a page.
- * GitHub Releases + electron-builder's SHA-512 manifest supply the update feed. */
-function createUpdateController({app,updater,dialog,getWindow,platform=process.platform,logger=console}){
- if(!app||!updater||!dialog||typeof getWindow!=="function")throw Error("Updater dependencies missing");
+/* All update decisions occur through an explicit action in the trusted desktop UI.
+ * The Electron main process owns the updater; the web UI never receives an update URL. */
+function createUpdateController({app,updater,getWindow,platform=process.platform,logger=console}){
+ if(!app||!updater||typeof getWindow!=="function")throw Error("Updater dependencies missing");
  const supported=()=>platform==="win32"&&app.isPackaged===true;
- let status={phase:supported()?"idle":"disabled",currentVersion:app.getVersion(),nextVersion:null,percent:0};
- let checking=false,started=false,promptOpen=false;
- const clean=v=>String(v??"").slice(0,90);
+ let status={phase:supported()?"idle":"disabled",currentVersion:app.getVersion(),
+  nextVersion:null,percent:0,transferred:0,total:0,bytesPerSecond:0,remainingSeconds:null,
+  releaseNotes:"",message:null};
+ let checking=false,downloading=false,started=false;
+ const clean=(v,n=250)=>String(v??"").slice(0,n);
+ const activeWindow=()=>{const win=getWindow();return win&&!win.isDestroyed?.()?win:null;};
  const send=(phase,extra={})=>{
   status={...status,...extra,phase};
-  const win=getWindow();
-  if(win&&!win.isDestroyed?.()&&!win.webContents.isDestroyed?.()){
+  const win=activeWindow();
+  if(win&&!win.webContents.isDestroyed?.())
    win.webContents.send("seven:update-status",{...status});
-  }
  };
- const box=async options=>{
-  const win=getWindow();
-  if(!win||win.isDestroyed?.())return {response:1};
-  return dialog.showMessageBox(win,{noLink:true,...options});
+ const signal=()=>{
+  const win=activeWindow();
+  if(!win)return;
+  if(win.isMinimized?.())win.restore?.();
+  if(!win.isVisible?.())win.show?.();
+  win.focus?.();
+ };
+ const releaseNotes=info=>{
+  const raw=Array.isArray(info?.releaseNotes)?
+   info.releaseNotes.map(item=>typeof item==="string"?item:item?.note||"").join("\n"):
+   typeof info?.releaseNotes==="string"?info.releaseNotes:"";
+  return clean(raw.replace(/<[^>]*>/g," ").replace(/\s{2,}/g," ").trim(),1300);
  };
  updater.autoDownload=false;
- updater.autoInstallOnAppQuit=false; // Only explicit acceptance installs.
+ updater.autoInstallOnAppQuit=false;
  updater.allowDowngrade=false;
  updater.allowPrerelease=false;
  updater.on("checking-for-update",()=>send("checking"));
  updater.on("update-not-available",()=>{
-  send("up-to-date",{percent:0,nextVersion:null});
+  send("up-to-date",{percent:0,nextVersion:null,transferred:0,total:0,
+   bytesPerSecond:0,remainingSeconds:null,releaseNotes:"",message:null});
  });
  updater.on("update-available",info=>{
-  const version=clean(info?.version);
-  send("available",{nextVersion:version,percent:0});
-  void (async()=>{
-   if(promptOpen)return;
-   promptOpen=true;
-   try{
-    const decision=await box({
-     type:"info",title:"Mise à jour de Seven Gestion",
-     message:"Une nouvelle version de Seven Gestion est disponible.",
-     detail:"Version installée : "+app.getVersion()+"\nNouvelle version : "+version+
-      "\n\nTélécharger la mise à jour maintenant ? Le logiciel reste utilisable pendant le téléchargement.",
-     buttons:["Télécharger","Plus tard"],defaultId:0,cancelId:1
-    });
-    if(decision.response!==0){send("deferred",{nextVersion:version});return;}
-    send("downloading",{nextVersion:version,percent:0});
-    promptOpen=false; // A fast download can emit update-downloaded immediately.
-    try{await updater.downloadUpdate();}
-    catch(err){logger.warn("Seven update download failed",clean(err?.message));send("error",{message:"Téléchargement impossible. Vérifiez votre connexion et réessayez."});}
-   }finally{promptOpen=false;}
-  })().catch(err=>logger.warn("Seven update prompt failed",clean(err?.message)));
+  send("available",{nextVersion:clean(info?.version,42),percent:0,transferred:0,total:0,
+   bytesPerSecond:0,remainingSeconds:null,releaseNotes:releaseNotes(info),message:null});
+  signal();
  });
  updater.on("download-progress",info=>{
-  const percent=Math.min(100,Math.max(0,Math.round(Number(info?.percent)||0)));
-  send("downloading",{percent});
-  const win=getWindow();
-  if(win&&!win.isDestroyed?.())win.setProgressBar?.(percent/100);
+  const transferred=Math.max(0,Number(info?.transferred)||0);
+  const total=Math.max(0,Number(info?.total)||0);
+  const bytesPerSecond=Math.max(0,Number(info?.bytesPerSecond)||0);
+  const percent=Math.min(100,Math.max(0,Math.round(Number(info?.percent)||
+    (total?transferred/total*100:0))));
+  const remainingSeconds=bytesPerSecond>0&&total>transferred?
+    Math.max(0,Math.ceil((total-transferred)/bytesPerSecond)):null;
+  send("downloading",{percent,transferred,total,bytesPerSecond,remainingSeconds});
+  const win=activeWindow();win?.setProgressBar?.(percent/100);
  });
  updater.on("update-downloaded",info=>{
-  const win=getWindow();
-  if(win&&!win.isDestroyed?.())win.setProgressBar?.(-1);
-  const version=clean(info?.version||status.nextVersion);
-  send("ready",{nextVersion:version,percent:100});
-  void (async()=>{
-   // Don't interrupt the user's current workflow without asking.
-   if(promptOpen){
-    // Another modal is still closing. UI button remains available as fallback.
-    return;
-   }
-   promptOpen=true;
-   try{
-    const decision=await box({
-     type:"info",title:"Mise à jour prête à installer",
-     message:"Seven Gestion "+version+" a été téléchargé.",
-     detail:"Enregistrez vos modifications en cours. L'installation fermera Seven Gestion, appliquera la mise à jour et relancera le logiciel.\n\nVos données restent dans Supabase.",
-     buttons:["Installer et redémarrer","Plus tard"],defaultId:0,cancelId:1
-    });
-    if(decision.response===0)install();
-   }finally{promptOpen=false;}
-  })().catch(err=>logger.warn("Seven install prompt failed",clean(err?.message)));
+  const win=activeWindow();win?.setProgressBar?.(-1);
+  downloading=false;
+  send("ready",{nextVersion:clean(info?.version||status.nextVersion,42),percent:100,
+   remainingSeconds:0,bytesPerSecond:0,message:null});
+  signal();
  });
  updater.on("error",err=>{
-  logger.warn("Seven updater failed",clean(err?.message));
-  send("error",{message:"La recherche de mises à jour a échoué. Vérifiez Internet puis réessayez."});
-  const win=getWindow();
-  if(win&&!win.isDestroyed?.())win.setProgressBar?.(-1);
+  logger.warn("Seven update error",clean(err?.message));
+  checking=false;downloading=false;
+  activeWindow()?.setProgressBar?.(-1);
+  send("error",{message:"Connexion ou téléchargement impossible. Vérifiez Internet puis réessayez."});
  });
- const install=()=>{
+ async function download(){
+  if(!supported())return {ok:false,reason:"not-installed"};
+  if(downloading||["checking","installing","ready"].includes(status.phase))
+   return {ok:false,reason:"busy"};
+  if(!["available","deferred"].includes(status.phase)||!status.nextVersion)
+   return {ok:false,reason:"not-available"};
+  downloading=true;
+  send("downloading",{percent:0,transferred:0,total:0,bytesPerSecond:0,remainingSeconds:null,message:null});
+  try{
+   await updater.downloadUpdate();
+   return {ok:true};
+  }catch(err){
+   downloading=false;
+   logger.warn("Seven download failed",clean(err?.message));
+   activeWindow()?.setProgressBar?.(-1);
+   send("error",{message:"Téléchargement interrompu. Vérifiez votre connexion puis relancez la recherche."});
+   return {ok:false,reason:"network"};
+  }
+ }
+ function install(){
   if(!supported()||status.phase!=="ready")return false;
-  send("installing");
+  send("installing",{message:"Installation et redémarrage en cours…"});
   updater.quitAndInstall(false,true);
   return true;
- };
- async function check(manual=false){
+ }
+ async function check(){
   if(!supported()){
-   send("disabled",{message:"Les mises à jour sont disponibles uniquement après installation avec l'installateur Windows."});
+   send("disabled",{message:"Les mises à jour nécessitent l'installation de Seven Gestion sur Windows."});
    return {ok:false,reason:"not-installed"};
   }
-  if(checking||["downloading","installing"].includes(status.phase))return {ok:false,reason:"busy"};
-  checking=true;
-  send("checking",{message:null});
+  if(checking||downloading||["installing","ready"].includes(status.phase))
+   return {ok:false,reason:"busy"};
+  checking=true;send("checking",{message:null});
   try{
    await updater.checkForUpdates();
    return {ok:true};
   }catch(err){
-   logger.warn("Seven update check failed",clean(err?.message));
-   send("error",{message:"Impossible de vérifier les mises à jour. Réessayez lorsque vous serez connecté."});
-   if(manual)await box({type:"warning",title:"Seven Gestion — mises à jour",
-     message:"La vérification des mises à jour a échoué.",detail:"Vérifiez votre connexion Internet, puis réessayez.",buttons:["Fermer"]});
+   logger.warn("Seven check failed",clean(err?.message));
+   send("error",{message:"Impossible de vérifier les mises à jour. Vérifiez votre connexion."});
    return {ok:false,reason:"network"};
   }finally{checking=false;}
  }
  function start(){
-  if(started)return;
-  started=true;
-  if(supported())setTimeout(()=>{void check(false);},1800);
+  if(started)return;started=true;
+  if(supported())setTimeout(()=>{void check();},1800);
  }
- return {start,check,install,getState:()=>({...status})};
+ return {start,check,download,install,getState:()=>({...status})};
 }
 module.exports={createUpdateController};

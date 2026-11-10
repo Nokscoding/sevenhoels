@@ -62,6 +62,11 @@ for(const [name,src] of [["Contrôleur des mises à jour",updateController],["In
 }
 assert.ok(main.includes("updateController.start()"),"Recherche automatique au démarrage absente");
 assert.ok(preload.includes("checkForUpdates:"),"Bouton de mise à jour non relié");
+assert.ok(preload.includes("downloadUpdate:"),"Téléchargement par consentement non exposé");
+assert.ok(main.includes('"seven:update-download"'),"Canal sécurisé de téléchargement absent");
+assert.ok(updateController.includes('updater.autoDownload=false'),"Consentement avant téléchargement requis");
+assert.ok(updateUI.includes('seven-update-dialog'),"Pop-up de mise à jour manquant");
+assert.ok(updateUI.includes('progress')&&updateUI.includes('bytesPerSecond'),"Progression détaillée absente");
 assert.ok(updateController.includes("autoInstallOnAppQuit=false"),"Une mise à jour ne doit pas s'installer sans consentement");
 assert.ok(pkg.build.publish.some(item=>item.provider==="github"),"Flux de distribution GitHub absent");
 assert.ok(pkg.build.win.target.some(x=>x.target==="nsis"),"Installateur NSIS manquant");

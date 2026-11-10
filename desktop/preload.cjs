@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("sevenDesktop",Object.freeze({
  getVersion:()=>ipcRenderer.invoke("seven:app-version"),
  getUpdateState:()=>ipcRenderer.invoke("seven:update-state"),
  checkForUpdates:()=>ipcRenderer.invoke("seven:update-check"),
+ downloadUpdate:()=>ipcRenderer.invoke("seven:update-download"),
  installUpdate:()=>ipcRenderer.invoke("seven:update-install"),
  onUpdateStatus:callback=>{
   if(typeof callback!=="function")return ()=>{};

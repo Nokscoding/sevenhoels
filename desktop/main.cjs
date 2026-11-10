@@ -1,5 +1,5 @@
 "use strict";
-const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage,dialog} = require("electron");
+const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage} = require("electron");
 const {autoUpdater}=require("electron-updater");
 const {createUpdateController}=require("./updates.cjs");
 const fs = require("node:fs/promises");
@@ -127,7 +127,7 @@ else{
    return app.getVersion();
   });
   updateController=createUpdateController({
-   app,updater:autoUpdater,dialog,getWindow:()=>mainWindow
+   app,updater:autoUpdater,getWindow:()=>mainWindow
   });
   ipcMain.handle("seven:update-state",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
@@ -136,6 +136,10 @@ else{
   ipcMain.handle("seven:update-check",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return updateController.check(true);
+  });
+  ipcMain.handle("seven:update-download",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return updateController.download();
   });
   ipcMain.handle("seven:update-install",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
