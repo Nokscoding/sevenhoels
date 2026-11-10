@@ -1,4 +1,4 @@
-name: Seven Gestion Windows — installateur et mises à jour (Wine)
+name: Seven Gestion Windows — installateur et mises à jour
 
 on:
   push:
@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   windows-installer:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 50
     permissions:
       contents: write # Needed only if the operator requests a draft release
@@ -42,8 +42,6 @@ jobs:
           ref: main
           path: seven-admin
           persist-credentials: false
-      - name: Install Wine for cross-compiling the Windows NSIS installer
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends wine64
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
