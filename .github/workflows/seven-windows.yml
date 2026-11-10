@@ -1,47 +1,86 @@
-name: Seven Gestion Windows
+name: Seven Gestion Windows — installateur et mises à jour
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - "desktop/**"
       - "erp/**"
       - ".github/workflows/seven-windows.yml"
+  workflow_dispatch:
+    inputs:
+      prepare_update:
+        description: "Préparer une mise à jour sous forme de brouillon GitHub Release"
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  build-windows:
+  windows-installer:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
+    permissions:
+      contents: write # Needed only if the operator requests a draft release
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      SEVEN_ADMIN_SOURCE_DIR: ${{ github.workspace }}/seven-admin
     defaults:
       run:
         working-directory: desktop
     steps:
-      - name: Checkout Seven
+      - name: Checkout the Windows application
         uses: actions/checkout@v4
-      - name: Node.js 22
+        with:
+          persist-credentials: false
+      - name: Checkout the live Seven Gestion administrator UI
+        uses: actions/checkout@v4
+        with:
+          repository: Nokscoding/seven-hotels-gestion
+          ref: main
+          path: seven-admin
+          persist-credentials: false
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install pinned dependencies
         run: npm install --no-audit --no-fund
-      - name: Check JavaScript syntax
+      - name: Check source and updater behavior
         run: |
           npm run check
           npm test
-          node --check ../erp/app.js
-          node --check ../erp/notifications.js
-      - name: Build Windows installer and portable EXE
-        run: npm run dist:win
-      - name: Share installer files
+          node --check ../seven-admin/app.js
+          node --check ../seven-admin/notifications.js
+      - name: Build installer or prepare draft update
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          RELEASE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.prepare_update }}
+        run: |
+          if ($env:RELEASE_MODE -eq 'true') {
+            npm run dist:release
+          } else {
+            npm run dist:win
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify installer exists
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem ../release -Filter "Seven-Gestion-Setup-*.exe"
+          if (-not $exe) { throw "Installer Windows not built" }
+          Write-Host "NSIS installer ready:" $exe.Name
+      - name: Upload test installer artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Seven-Gestion-Windows-${{ github.run_number }}
-          path: release/**
+          name: Seven-Gestion-Setup-${{ github.run_number }}
+          path: |
+            release/*.exe
+            release/*.yml
+            release/*.blockmap
           if-no-files-found: error
           retention-days: 14

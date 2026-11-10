@@ -44,6 +44,7 @@ function createUpdateController({app,updater,dialog,getWindow,platform=process.p
     });
     if(decision.response!==0){send("deferred",{nextVersion:version});return;}
     send("downloading",{nextVersion:version,percent:0});
+    promptOpen=false; // A fast download can emit update-downloaded immediately.
     try{await updater.downloadUpdate();}
     catch(err){logger.warn("Seven update download failed",clean(err?.message));send("error",{message:"Téléchargement impossible. Vérifiez votre connexion et réessayez."});}
    }finally{promptOpen=false;}
