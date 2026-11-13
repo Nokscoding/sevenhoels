@@ -15,7 +15,7 @@ const dist=path.join(desktop,"renderer");
 await fs.rm(dist,{recursive:true,force:true});
 await fs.mkdir(path.join(dist,"vendor"),{recursive:true});
 
-for(const filename of ["index.html","app.js","notifications.js","config.js","style.css","management.css","ui-polish.css","interface-contrast.css","sidebar-mobile.css","inventory.css","rfid.css"]){
+for(const filename of ["index.html","app.js","notifications.js","config.js","style.css","management.css","ui-polish.css","interface-contrast.css","sidebar-mobile.css","inventory.css","rfid.css","rfid-reader.js"]){
  await fs.copyFile(path.join(source,filename),path.join(dist,filename));
 }
 await fs.cp(path.join(source,"assets"),path.join(dist,"assets"),{recursive:true});
