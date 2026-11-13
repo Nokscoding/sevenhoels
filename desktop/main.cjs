@@ -4,6 +4,7 @@ const {autoUpdater}=require("electron-updater");
 const {createUpdateController}=require("./updates.cjs");
 const {createRfidStudioController}=require("./rfid-studio.cjs");
 const {createRfidLayoutStore}=require("./rfid-layout.cjs");
+const {createRfidNativeController}=require("./rfid-native.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const {pathToFileURL} = require("node:url");
@@ -16,6 +17,7 @@ let mainWindow;
 let updateController;
 let rfidStudio;
 let rfidLayout;
+let rfidNative;
 
 protocol.registerSchemesAsPrivileged([{
  scheme:SCHEME,privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true,corsEnabled:true}
@@ -158,6 +160,23 @@ else{
   ipcMain.handle("seven:rfid-layout-put",(event,payload)=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidLayout.put(payload);
+  });
+  rfidNative=createRfidNativeController({app,studio:rfidStudio,layout:rfidLayout});
+  ipcMain.handle("seven:rfid-native-status",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidNative.status();
+  });
+  ipcMain.handle("seven:rfid-native-run",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidNative.execute(payload);
+  });
+  ipcMain.handle("seven:rfid-vendor-read",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidLayout.getVendorId(payload);
+  });
+  ipcMain.handle("seven:rfid-vendor-save",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidLayout.setVendorId(payload);
   });
   ipcMain.handle("seven:rfid-studio-status",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");

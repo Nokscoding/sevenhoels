@@ -301,6 +301,22 @@ async function refreshHotelRoster(selectId){
 
 // Read-only, non-secret reservation context for the Windows RFID handoff.
 // Actual card programming remains inside the proven Studio 2.2.
+// Register the physical badge in the hotel register only AFTER native read-back verifies it.
+window.SevenRfidRecordIssued=async ({stayId,sequence})=>{
+ if(!window.sevenDesktop||!canHandle()||!navigator.onLine)
+  return {ok:false,message:"Connexion et accès réception nécessaires pour enregistrer le badge."};
+ const stay=state.stays.find(s=>s.id===stayId&&s.hotel_id===state.hotelId&&s.status==="checked_in");
+ const uid=String(sequence||"").trim().toUpperCase();
+ if(!stay||!/^[A-F0-9]{8}$/.test(uid))return {ok:false,message:"Séjour ou numéro de badge invalide."};
+ try{
+  const saved=await sb.rpc("seven_rfid_issue",{p_hotel_id:state.hotelId,p_reservation_id:stay.id,p_uid:uid});
+  if(saved.error)throw saved.error;
+  await loadAll();
+  return {ok:true,message:"Badge encodé et enregistré dans le séjour Seven."};
+ }catch(error){
+  return {ok:false,message:"Badge physiquement vérifié, mais registre non synchronisé : "+String(error?.message||"erreur").slice(0,110)};
+ }
+};
 window.SevenRfidContext=()=>{
  if(!state.user||!state.hotelId||!canHandle())return null;
  return {

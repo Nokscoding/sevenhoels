@@ -27,14 +27,52 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
      throw Error("Configuration RFID incompatible.");
    return data;
   }catch(error){
-   if(error?.code==="ENOENT")return {version:1,entries:{}};
+   if(error?.code==="ENOENT")return {version:1,entries:{},vendorIds:{}};
    throw error;
   }
  }
- const key=(userId,hotelId)=>cleanId(userId)+":"+cleanId(hotelId);
+ // One physical workstation may host different Seven staff accounts.
+ // The hardware mapping belongs to the hotel, not to the staff login.
+ const key=(userId,hotelId)=>{cleanId(userId);return "hotel:"+cleanId(hotelId);};
+ const previous=(data,userId,hotelId)=>{
+  const legacy=cleanId(userId)+":"+cleanId(hotelId);
+  if(data.entries?.[legacy])return data.entries[legacy];
+  const old=Object.entries(data.entries||{}).find(([k])=>k.endsWith(":"+cleanId(hotelId)));
+  return old?.[1]||{};
+ };
+ async function commit(data) {
+  const content=JSON.stringify(data);
+  if(content.length>220000)throw Error("Configuration RFID trop volumineuse.");
+  const encrypted=await safeStorage.encryptStringAsync(content);
+  await files.mkdir(path.dirname(location),{recursive:true});
+  const temp=location+".tmp";
+  await files.writeFile(temp,encrypted,{mode:0o600});
+  await files.rename(temp,location);
+ }
+ async function getVendorId({userId,hotelId}) {
+  const data=await readAll();
+  const current=data.vendorIds?.[key(userId,hotelId)];
+  if(current)return current;
+  const legacy=cleanId(userId)+":"+cleanId(hotelId);
+  return data.vendorIds?.[legacy]||
+    Object.entries(data.vendorIds||{}).find(([k])=>k.endsWith(":"+cleanId(hotelId)))?.[1]||null;
+ }
+ async function setVendorId({userId,hotelId,vendorHotelId}) {
+  const id=Number(vendorHotelId);
+  if(!Number.isSafeInteger(id)||id<=0||id>2147483647)throw Error("Identifiant fabricant invalide.");
+  const k=key(userId,hotelId);
+  const execute=async()=>{
+   const data=await readAll();
+   if(!data.vendorIds)data.vendorIds={};
+   data.vendorIds[k]=id;
+   await commit(data);
+   return id;
+  };
+  const op=writes.then(execute,execute);writes=op.catch(()=>{});return op;
+ }
  async function get({userId,hotelId}){
   const data=await readAll();
-  const rows=data.entries[key(userId,hotelId)]||{};
+  const rows=data.entries[key(userId,hotelId)]||previous(data,userId,hotelId);
   return Object.entries(rows).map(([roomId,entry])=>({
    roomId,building:entry.building,floor:entry.floor,lockNo:entry.lockNo
   }));
@@ -46,25 +84,19 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   const k=key(userId,hotelId);
   const execute=async()=>{
    const data=await readAll();
-   const rows=data.entries[k]||{};
+   const rows=data.entries[k]||previous(data,userId,hotelId);
    if(Object.entries(rows).some(([id,value])=>id!==record.roomId&&value.lockNo===record.lockNo))
     throw Error("Cette serrure est déjà associée à une autre chambre de l'établissement.");
    if(Object.keys(rows).length>=800&&!rows[record.roomId])throw Error("Limite de 800 chambres RFID par établissement.");
    rows[record.roomId]={building:record.building,floor:record.floor,lockNo:record.lockNo};
    data.entries[k]=rows;
-   const content=JSON.stringify(data);
-   if(content.length>220000)throw Error("Configuration RFID trop volumineuse.");
-   const encrypted=await safeStorage.encryptStringAsync(content);
-   await files.mkdir(path.dirname(location),{recursive:true});
-   const temp=location+".tmp";
-   await files.writeFile(temp,encrypted,{mode:0o600});
-   await files.rename(temp,location);
+   await commit(data);
    return record;
   };
   const operation=writes.then(execute,execute);
   writes=operation.catch(()=>{});
   return operation;
  }
- return {get,put};
+ return {get,put,getVendorId,setVendorId};
 }
 module.exports={createRfidLayoutStore};

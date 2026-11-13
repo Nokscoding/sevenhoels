@@ -33,6 +33,22 @@ if(process.platform==="win32"){
  // Local checks can reuse a cross-compiled .NET x86 binary. Releases compile on Windows.
  await fs.access(executable);
 }
+// In-process operations inside Seven Gestion are handled by a separate invisible
+// console bridge. The known-good SevenRFIDStudio.exe and its checksum remain untouched.
+const bridgeSource=path.join(root,"source","SevenRfidBridge.cs");
+const bridge=path.join(runtime,"SevenRfidBridge.exe");
+if(process.platform==="win32"){
+ const csc=path.join(process.env.WINDIR||"C:\\Windows","Microsoft.NET","Framework","v4.0.30319","csc.exe");
+ const result=spawnSync(csc,["/nologo","/target:exe","/platform:x86","/optimize+",
+  "/r:System.Web.Extensions.dll","/out:"+bridge,bridgeSource],{stdio:"inherit"});
+ if(result.status!==0)throw Error("Seven RFID inline bridge compilation failed");
+}else{
+ await fs.access(bridge);
+}
+const bridgeBytes=await fs.readFile(bridge);
+const bridgePE=bridgeBytes.readUInt32LE(0x3c);
+if(bridgeBytes.toString("ascii",bridgePE,bridgePE+2)!=="PE"||
+   bridgeBytes.readUInt16LE(bridgePE+4)!==0x14c)throw Error("RFID bridge must be PE32 x86");
 const bytes=await fs.readFile(executable);
 const pe=bytes.readUInt32LE(0x3c);
 if(bytes.toString("ascii",pe,pe+2)!=="PE" || bytes.readUInt16LE(pe+4)!==0x14c)throw Error("RFID helper must be PE32 x86");

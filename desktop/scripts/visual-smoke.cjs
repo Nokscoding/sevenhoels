@@ -64,24 +64,39 @@ async function run(){
   const img=await win.webContents.capturePage();
   await fs.writeFile(path.join(output,"Seven-Gestion-Desktop-Layout.png"),img.toPNG());
 
-  // Exercise the desktop RFID entry point with a fake bridge; never start native tools in QA.
+  // Exercise the real inline RFID panel using an entirely fake hardware bridge.
   const rfid=await win.webContents.executeJavaScript(
    '(async function(){'+
-   'window.__rfidLaunches=0;window.sevenDesktop={getRfidStudioStatus:async()=>({supported:true,available:true,version:"2.2",servicePort:10086}),openRfidStudio:async()=>{window.__rfidLaunches++;return {ok:true}},openRfidCardLock:async()=>({ok:true})};'+
-   'await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="./rfid-studio-ui.js";script.onload=resolve;script.onerror=()=>reject(Error("RFID entry point not loadable"));document.body.append(script)});'+
-   'await new Promise(resolve=>setTimeout(resolve,50));'+
+   'window.__rfidOps=[];'+
+   'const hotel="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",room="cccccccc-cccc-4ccc-8ccc-cccccccccccc",stay="dddddddd-dddd-4ddd-8ddd-dddddddddddd";'+
+   'window.SevenRfidContext=()=>({userId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",hotelId:hotel,hotelName:"Seven Test",role:"manager",'+
+    'rooms:[{id:room,hotel_id:hotel,number:"131",floor:"1"}],'+
+    'stays:[{id:stay,hotel_id:hotel,room_id:room,reference:"TEST",check_in:"2026-11-13",check_out:"2026-11-14",status:"checked_in"}]});'+
+   'window.sevenDesktop={'+
+    'getRfidRoomLayout:async()=>[{roomId:room,building:"Seven Test",floor:"1",lockNo:"01020A"}],'+
+    'saveRfidRoomLayout:async()=>({}),getRfidVendorId:async()=>12345,saveRfidVendorId:async()=>12345,'+
+    'getNativeRfidStatus:async()=>({available:true,cardLockReady:true}),'+
+    'runNativeRfid:async payload=>{window.__rfidOps.push(payload.operation);return {ok:true,type:"F",sequence:"FFFFFFFF",message:"Carte vierge reconnue"}},'+
+    'openRfidCardLock:async()=>({ok:true})};'+
+   'await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="./rfid-workflow-ui.js";script.onload=resolve;script.onerror=()=>reject(Error("Inline RFID UI not loadable"));document.body.append(script)});'+
+   'await new Promise(resolve=>setTimeout(resolve,130));'+
    'document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="rfidPage"));'+
-   'const panel=document.getElementById("sevenRfidStudioPanel"),button=document.getElementById("sevenRfidStudioOpen");'+
-   'if(!panel||!button||button.disabled)throw Error("Bundled RFID studio entry point unavailable");'+
-   'button.click();await new Promise(resolve=>setTimeout(resolve,20));'+
-   'return {launches:window.__rfidLaunches,visible:panel.getBoundingClientRect().height>100,label:button.textContent,warning:panel.textContent.includes("CardLock"),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};})()',true
+   'const panel=document.getElementById("sevenRfidWorkflow"),read=document.getElementById("sevenRfidRead"),issue=document.getElementById("sevenRfidIssue");'+
+   'if(!panel||!read||!issue||read.disabled)throw Error("Native RFID panel unavailable");'+
+   'read.click();await new Promise(resolve=>setTimeout(resolve,65));'+
+   'return {operations:window.__rfidOps,visible:panel.getBoundingClientRect().height>100,issuePresent:!!issue,'+
+    'warning:panel.textContent.includes("CardLock"),'+
+    'separateStudio:panel.textContent.includes("Ouvrir Seven RFID Studio"),'+
+    'overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};})()',true
   );
-  assert.equal(rfid.launches,1,"RFID button must invoke only the dedicated bridge");
-  assert.equal(rfid.visible,true,"RFID compatibility panel must be visible");
-  assert.equal(rfid.warning,true,"CardLock dependency must be visible to reception");
-  assert.ok(rfid.overflow<=3,"RFID panel must not overflow the desktop");
-  await fs.writeFile(path.join(output,"Seven-Gestion-RFID-Compat.png"),(await win.webContents.capturePage()).toPNG());
-  console.log("Seven RFID compatibility UI validated:",JSON.stringify(rfid));
+  assert.deepEqual(rfid.operations,["read"],"Reading must invoke the inline native bridge");
+  assert.equal(rfid.visible,true,"Native RFID panel must be visible");
+  assert.equal(rfid.issuePresent,true,"Native encode button must be present");
+  assert.equal(rfid.warning,true,"CardLock dependency must be clearly visible");
+  assert.equal(rfid.separateStudio,false,"No separate Studio launch UI");
+  assert.ok(rfid.overflow<=3,"Native RFID panel must not overflow the desktop");
+  await fs.writeFile(path.join(output,"Seven-Gestion-RFID-Inline.png"),(await win.webContents.capturePage()).toPNG());
+  console.log("Seven inline RFID UI validated:",JSON.stringify(rfid));
 
   // Mount the real production updater UI with a safe fake read-only bridge.
   // Do not send any booking or authentication requests during this test.
