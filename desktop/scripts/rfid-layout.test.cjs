@@ -9,8 +9,8 @@ const room2="d4444444-4444-4444-8444-444444444444";
 function fixture(){
  let blob=null;
  const storage={isAsyncEncryptionAvailable:()=>true,
-  encryptStringAsync:async data=>Buffer.from(data,"utf8"),
-  decryptStringAsync:async data=>({result:data.toString("utf8")})};
+  encryptStringAsync:async data=>Buffer.from(data,"utf8").map(value=>value^0x5a),
+  decryptStringAsync:async data=>({result:Buffer.from(data).map(value=>value^0x5a).toString("utf8")})};
  const files={
   readFile:async()=>{if(!blob){const e=new Error("missing");e.code="ENOENT";throw e;}return blob;},
   writeFile:async(_p,data)=>{blob=data;},mkdir:async()=>{},rename:async()=>{}
@@ -33,4 +33,5 @@ test("never saves plaintext in normal Windows safeStorage operation",async()=>{
  const {store,getBlob}=fixture();
  await store.put({userId:u1,hotelId:hotel,roomId:room1,building:"Seven",floor:"RDC",lockNo:"01020A"});
  assert.ok(Buffer.isBuffer(getBlob()));
+ assert.equal(getBlob().includes(Buffer.from("01020A")),false);
 });
