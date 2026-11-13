@@ -1,6 +1,6 @@
 // Seven RFID native bridge — Windows .NET Framework 4 / x86.
 // Calls only the official P50 SDK and does not alter the validated Studio 2.2.
-// CardLock must already be running; test cards and an isolated test lock ONLY.
+// CardLock must already be running. Guest cards only; never create master cards.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -114,8 +114,8 @@ internal static class Bridge {
   if(port!="Port1"&&port!="Port2")return Error("Port SDK inconnu.");
   if(operation!="read"&&operation!="issue"&&operation!="erase")return Error("Opération inconnue.");
   int hotel=Num(request,"hotelId");
-  if((operation=="issue"||operation=="erase")&&(hotel<=0||!Flag(request,"confirmTest")))
-   return Error("Identifiant hôtel autorisé et confirmation de badge de test requis.");
+  if((operation=="issue"||operation=="erase")&&(hotel<=0||!Flag(request,"confirmAuthorization")))
+   return Error("Numéro de l’hôtel et confirmation de l’opération requis.");
   string root=AppDomain.CurrentDomain.BaseDirectory;
   string sdk=Path.Combine(Path.Combine(root,"sdk"),port);
   if(!Directory.Exists(sdk))return Error("Dossier SDK absent : "+port);
@@ -130,9 +130,9 @@ internal static class Bridge {
    ReaderCard before=Read();
    if(operation=="read")return Info(before,hotel);
    if(!before.Valid)return Error("Carte non reconnue : impossible de modifier le badge.");
-   if(operation=="erase"&&before.Type!="6")return Error("L'effacement exige une carte CLIENT de test.");
+   if(operation=="erase"&&before.Type!="6")return Error("Seules les cartes de chambre client peuvent être effacées.");
    if(operation=="issue"&&before.Type!="F"&&before.Type!="6")
-    return Error("Émission autorisée seulement sur badge vierge ou CLIENT de test.");
+    return Error("La carte doit être vierge ou être une carte de chambre client.");
    ReaderCard check=Read();
    if(!check.Valid||check.Data!=before.Data)return Error("La carte a été retirée ou remplacée : opération annulée.");
    byte[] output=new byte[4096];
@@ -143,7 +143,7 @@ internal static class Bridge {
     ReaderCard after=Read();
     bool blank=after.Valid&&after.Type=="F";
     return new Dictionary<string,object>{{"ok",blank},{"code",erased},{"verified",blank},
-     {"type",after.Type},{"message",blank?"Badge CLIENT de test effacé et relecture confirmée.":"Effacement SDK accepté, mais relecture non confirmée."}};
+     {"type",after.Type},{"message",blank?"Carte client effacée et vérifiée.":"Effacement SDK accepté, mais relecture non confirmée."}};
    }
    string lockNo=Str(request,"lockNo").Trim().ToUpperInvariant();
    if(lockNo.Length<1||lockNo.Length>8)return Error("Serrure SDK invalide.");
@@ -154,8 +154,8 @@ internal static class Bridge {
    if(!DateTime.TryParseExact(Str(request,"expiresAt"),"yyyy-MM-ddTHH:mm",
       CultureInfo.InvariantCulture,DateTimeStyles.None,out expiryDate))
     return Error("Format date / heure d'expiration invalide.");
-   if(expiryDate<=DateTime.Now||expiryDate>DateTime.Now.AddDays(30))
-    return Error("Expiration de test requise dans les trente prochains jours.");
+   if(expiryDate<=DateTime.Now||expiryDate>DateTime.Now.AddYears(5))
+    return Error("Date de fin de séjour non valide.");
    string begin=DateTime.Now.ToString("yyMMddHHmm",CultureInfo.InvariantCulture);
    string expiry=expiryDate.ToString("yyMMddHHmm",CultureInfo.InvariantCulture);
    int issued=Vendor.GuestCard(1,hotel,(byte)number,(byte)dai,0,0,begin,expiry,lockNo,output);
@@ -165,7 +165,7 @@ internal static class Bridge {
    bool verified=VerifiedGuest(verify,hotel,lockNo,expiry);
    return new Dictionary<string,object>{{"ok",verified},{"code",issued},{"verified",verified},
     {"type",verify.Type},{"sequence",verify.Sequence},{"message",verified
-       ?"Badge CLIENT de test encodé ; serrure et expiration vérifiées par relecture SDK."
+       ?"Carte client créée ; chambre et date de fin vérifiées."
        :"GuestCard retourne 0 mais la relecture ne confirme pas le contenu. Gardez la carte et relisez-la."}};
   }finally{
    try{Vendor.CloseUSB(1);}catch{}
