@@ -90,7 +90,7 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Installer absent" }
           if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
           if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
-          gh release create "v$version" "$installer" "$manifest" "$blockmap" --draft --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Version 0.2.3 — nouvelle fenêtre de mise à jour bien visible, progression du téléchargement (pourcentage, taille, vitesse, temps restant), confirmation avant installation et redémarrage. Intègre également la gestion des chambres et réservations de la version précédente. À publier après validation."
+          gh release create "v$version" "$installer" "$manifest" "$blockmap" --draft --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Version 0.2.4 — premier module RFID USB pour la réception : lecture des cartes en mode clavier, enregistrement après check-in, vérification et révocation sécurisées. Les numéros de carte ne sont pas conservés en clair. La compatibilité du lecteur S18 et des serrures physiques reste à tester sur place."
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
         if: always()

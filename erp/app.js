@@ -296,7 +296,29 @@ async function refreshHotelRoster(selectId){
  renderProperties();
 }
 
-function renderRFID(){el("rfidTable").innerHTML=table(["Chambre","Carte (empreinte)","Délivrée","Révoquée"],state.rfid.map(r=>'<tr><td>'+esc((state.rooms.find(x=>x.id===r.room_id)||{}).number||"—")+'</td><td>'+esc(r.card_uid_hash.substring(0,10))+'…</td><td>'+dateDisplay(r.issued_at)+'</td><td>'+(r.revoked_at?"Oui":"Non")+'</td></tr>'));}
+function renderRFID(){
+ const select=el("rfidStaySelect"),previous=select.value;
+ const checked=state.stays.filter(s=>s.status==="checked_in"&&s.hotel_id===state.hotelId);
+ select.innerHTML='<option value="">Choisir un séjour en cours</option>'+checked.map(s=>{
+  const room=state.rooms.find(r=>r.id===s.room_id);
+  return '<option value="'+esc(s.id)+'">'+esc(s.reference)+' · '+esc(room?.number||"chambre")+' · '+esc(s.guest_name)+'</option>';
+ }).join("");
+ if(checked.some(s=>s.id===previous))select.value=previous;
+ const now=Date.now();
+ const rows=state.rfid.slice().sort((a,b)=>String(b.issued_at).localeCompare(String(a.issued_at))).map(c=>{
+  const room=state.rooms.find(r=>r.id===c.room_id),
+        stay=state.stays.find(s=>s.id===c.reservation_id);
+  const expired=c.expires_at&&new Date(c.expires_at).getTime()<=now;
+  const inactive=stay?.status!=="checked_in";
+  const current=!c.revoked_at&&!expired&&!inactive;
+  const stateName=c.revoked_at?"Révoquée":expired?"Expirée":inactive?"Séjour inactif":"Active";
+  return '<tr><td>'+esc(room?.number||"—")+'</td><td>'+esc(stay?.reference||"—")+'</td><td>'+esc(String(c.id||"").slice(0,8).toUpperCase())+'</td><td>'+esc(dateDisplay(c.issued_at))+'</td><td>'+esc(c.expires_at?new Date(c.expires_at).toLocaleString("fr-FR"):"—")+'</td><td>'+pill(current?"available":"cancelled").replace(current?"Disponible":"Annulée",stateName)+'</td><td>'+(c.revoked_at?"—":'<button type="button" class="action-button action-danger" data-rfid-revoke="'+esc(c.id)+'">Révoquer</button>')+'</td></tr>';
+ });
+ el("rfidTable").innerHTML=table(["Chambre","Séjour","Carte","Création","Expiration","État","Action"],rows);
+ el("rfidCardCount").textContent=state.rfid.filter(c=>!c.revoked_at&&(!c.expires_at||new Date(c.expires_at)>new Date())&&state.stays.some(s=>s.id===c.reservation_id&&s.status==="checked_in")).length;
+ el("rfidEnrollFields").hidden=el("rfidScanMode").value!=="issue";
+ el("rfidScanSubmit").textContent=el("rfidScanMode").value==="issue"?"Enregistrer la carte":"Vérifier la carte";
+}
 
 function renderManagement(){
  const hotel=currentHotel();
@@ -629,6 +651,73 @@ el("roomTypeForm").addEventListener("submit",async e=>{
   await loadAll();
  }catch(err){console.error(err);flash(readableError(err));}
 });
+
+/* Lecteur USB type clavier HID : le numéro est saisi uniquement dans ce champ.
+   Le serveur conserve un HMAC, jamais le numéro RFID brut. */
+const rfidInput=el("rfidScanInput"),rfidResult=el("rfidScanResult");
+el("rfidReaderFocus").addEventListener("click",()=>{
+ rfidInput.value="";rfidInput.focus();
+ el("rfidReaderHint").textContent="Lecteur actif : présentez la carte sur le S18. Si rien ne s'écrit, testez-le dans le Bloc-notes Windows.";
+});
+el("rfidScanMode").addEventListener("change",renderRFID);
+el("rfidScanForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!canHandle()||!navigator.onLine||!state.hotelId){
+  rfidResult.textContent="Connexion et autorisation de réception nécessaires.";rfidResult.dataset.result="error";return;
+ }
+ const uid=rfidInput.value.trim().toUpperCase(),mode=el("rfidScanMode").value;
+ if(!/^[A-Z0-9]{6,32}$/.test(uid)){
+  rfidResult.textContent="Lecture invalide. Vérifiez le mode clavier USB et le numéro transmis (6 à 32 lettres ou chiffres).";
+  rfidResult.dataset.result="error";rfidInput.focus();return;
+ }
+ const stay=mode==="issue"?state.stays.find(s=>s.id===el("rfidStaySelect").value&&s.hotel_id===state.hotelId&&s.status==="checked_in"):null;
+ if(mode==="issue"&&!stay){
+  rfidResult.textContent="Sélectionnez un séjour avec check-in effectué.";rfidResult.dataset.result="error";rfidInput.focus();return;
+ }
+ const btn=el("rfidScanSubmit");btn.disabled=true;
+ rfidResult.textContent="Lecture en cours…";rfidResult.dataset.result="pending";
+ try{
+  const result=mode==="issue"?
+   await sb.rpc("seven_rfid_issue",{p_hotel_id:state.hotelId,p_reservation_id:stay.id,p_uid:uid}):
+   await sb.rpc("seven_rfid_verify",{p_hotel_id:state.hotelId,p_uid:uid});
+  if(result.error)throw result.error;
+  const data=result.data||{};
+  if(mode==="issue"){
+   rfidResult.dataset.result="success";
+   rfidResult.textContent="Carte enregistrée pour la chambre "+(state.rooms.find(r=>r.id===stay.room_id)?.number||"")+". Elle sera refusée dès la fin du séjour ou après révocation.";
+   await loadAll();
+  }else if(data.valid){
+   rfidResult.dataset.result="success";
+   rfidResult.textContent="Carte reconnue · Chambre "+(data.room_number||"")+" · Séjour "+(data.reference||"")+" · Expire le "+new Date(data.expires_at).toLocaleString("fr-FR")+".";
+  }else{
+   const reasons={unknown_card:"Carte inconnue",revoked:"Carte révoquée",expired:"Carte expirée",stay_not_active:"Séjour non actif"};
+   rfidResult.dataset.result="error";rfidResult.textContent=(reasons[data.reason]||"Carte non autorisée")+" — aucun accès validé.";
+  }
+ }catch(error){
+  const reasons={invalid_card_uid:"Numéro de carte invalide.",not_authorized:"Vous n'avez pas les droits pour gérer les cartes.",reservation_not_found:"Séjour introuvable.",rfid_checkin_required:"Effectuez d'abord le check-in du client.",rfid_stay_ended:"Le séjour est terminé.",rfid_card_already_assigned:"Cette carte est déjà attribuée. Révoquez-la avant de la réutiliser."};
+  rfidResult.dataset.result="error";rfidResult.textContent=reasons[error?.message]||"Opération RFID impossible. Vérifiez la connexion et réessayez.";
+ }finally{
+  rfidInput.value="";btn.disabled=false;
+  if(!el("rfidPage").hidden&&state.view==="rfid")rfidInput.focus();
+ }
+});
+el("rfidTable").addEventListener("click",async e=>{
+ const btn=e.target.closest("[data-rfid-revoke]");
+ if(!btn||!canHandle()||!navigator.onLine)return;
+ const card=state.rfid.find(c=>c.id===btn.dataset.rfidRevoke&&c.hotel_id===state.hotelId);
+ if(!card||card.revoked_at)return;
+ if(!window.confirm("Révoquer cette carte ? Elle ne sera plus reconnue par Seven Gestion."))return;
+ btn.disabled=true;
+ try{
+  const response=await sb.rpc("seven_rfid_revoke",{p_hotel_id:state.hotelId,p_card_id:card.id});
+  if(response.error)throw response.error;
+  rfidResult.textContent="Carte révoquée dans Seven Gestion.";rfidResult.dataset.result="success";
+  await loadAll();
+ }catch(error){
+  rfidResult.dataset.result="error";rfidResult.textContent="Révocation impossible. Réessayez.";
+ }finally{btn.disabled=false;}
+});
+
 el("roomsTable").addEventListener("change",e=>{if(e.target.matches("[data-room]"))setRoomStatus(e.target.dataset.room,e.target.value);});
 el("roomsTable").addEventListener("click",e=>{
  const b=e.target.closest("[data-room-edit]");if(!b||!canManage())return;
