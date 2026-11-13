@@ -31,7 +31,15 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
    throw error;
   }
  }
- const key=(userId,hotelId)=>cleanId(userId)+":"+cleanId(hotelId);
+ // One physical workstation may host different Seven staff accounts.
+ // The hardware mapping belongs to the hotel, not to the staff login.
+ const key=(userId,hotelId)=>{cleanId(userId);return "hotel:"+cleanId(hotelId);};
+ const previous=(data,userId,hotelId)=>{
+  const legacy=cleanId(userId)+":"+cleanId(hotelId);
+  if(data.entries?.[legacy])return data.entries[legacy];
+  const old=Object.entries(data.entries||{}).find(([k])=>k.endsWith(":"+cleanId(hotelId)));
+  return old?.[1]||{};
+ };
  async function commit(data) {
   const content=JSON.stringify(data);
   if(content.length>220000)throw Error("Configuration RFID trop volumineuse.");
@@ -42,7 +50,12 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   await files.rename(temp,location);
  }
  async function getVendorId({userId,hotelId}) {
-  const data=await readAll();return data.vendorIds?.[key(userId,hotelId)]||null;
+  const data=await readAll();
+  const current=data.vendorIds?.[key(userId,hotelId)];
+  if(current)return current;
+  const legacy=cleanId(userId)+":"+cleanId(hotelId);
+  return data.vendorIds?.[legacy]||
+    Object.entries(data.vendorIds||{}).find(([k])=>k.endsWith(":"+cleanId(hotelId)))?.[1]||null;
  }
  async function setVendorId({userId,hotelId,vendorHotelId}) {
   const id=Number(vendorHotelId);
@@ -59,7 +72,7 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
  }
  async function get({userId,hotelId}){
   const data=await readAll();
-  const rows=data.entries[key(userId,hotelId)]||{};
+  const rows=data.entries[key(userId,hotelId)]||previous(data,userId,hotelId);
   return Object.entries(rows).map(([roomId,entry])=>({
    roomId,building:entry.building,floor:entry.floor,lockNo:entry.lockNo
   }));
@@ -71,7 +84,7 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   const k=key(userId,hotelId);
   const execute=async()=>{
    const data=await readAll();
-   const rows=data.entries[k]||{};
+   const rows=data.entries[k]||previous(data,userId,hotelId);
    if(Object.entries(rows).some(([id,value])=>id!==record.roomId&&value.lockNo===record.lockNo))
     throw Error("Cette serrure est déjà associée à une autre chambre de l'établissement.");
    if(Object.keys(rows).length>=800&&!rows[record.roomId])throw Error("Limite de 800 chambres RFID par établissement.");
