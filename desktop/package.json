@@ -1,6 +1,6 @@
 {
   "name": "seven-gestion-desktop",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "Seven Hotels & Apartments — Gestion Windows",
   "main": "main.cjs",
