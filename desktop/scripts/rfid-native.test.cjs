@@ -36,7 +36,7 @@ test("physical issue uses configured hotel + lock, never an untrusted lock from 
  const t=mock();
  const r=await t.ctrl.execute({operation:"issue",userId,hotelId,roomId,
   lockNo:"BADBAD",port:"Port1",expiresAt:"2026-11-14T12:00",cardNo:1,dai:1,confirmTest:true});
- assert.equal(r.ok,true);
+ assert.equal(r.ok,true,JSON.stringify({result:r,calls:t.calls}));
  assert.equal(r.verified,true);
  assert.equal(t.calls.length,1);
  assert.equal(t.calls[0].payload.hotelId,48231);
@@ -56,7 +56,7 @@ test("mutations require test consent and configured valid dates",async()=>{
 test("read works using the same bridge without a stay/room",async()=>{
  const t=mock();
  const response=await t.ctrl.execute({operation:"read",userId,hotelId});
- assert.equal(response.ok,true);
+ assert.equal(response.ok,true,JSON.stringify({result:response,calls:t.calls}));
  assert.equal(t.calls[0].payload.operation,"read");
  assert.equal(t.calls[0].payload.hotelId,48231);
 });
