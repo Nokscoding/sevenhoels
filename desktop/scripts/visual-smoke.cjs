@@ -64,6 +64,24 @@ async function run(){
   const img=await win.webContents.capturePage();
   await fs.writeFile(path.join(output,"Seven-Gestion-Desktop-Layout.png"),img.toPNG());
 
+  // Ensure that walk-in check-in is visible in the actual Electron layout.
+  const guest=await win.webContents.executeJavaScript(
+   '(function(){document.getElementById("loginScreen").hidden=true;'+
+   'document.getElementById("appShell").hidden=false;'+
+   'document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="receptionPage"));'+
+   'const page=document.getElementById("receptionPage"),form=document.getElementById("receptionBookingForm"),'+
+   'start=document.getElementById("receptionStartButton");'+
+   'if(!page||!form||!start)throw Error("Accueil client manquant");'+
+   'document.getElementById("receptionCreationPanel").hidden=false;'+
+   'return {formVisible:form.getBoundingClientRect().height>100,'+
+   'startVisible:start.getBoundingClientRect().height>25,'+
+   'overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};})()',true
+  );
+  assert.equal(guest.formVisible,true,"Reception client form must be visible");
+  assert.equal(guest.startVisible,true,"Reception must prominently show New Client");
+  assert.ok(guest.overflow<=3,"Reception page cannot overflow screen");
+  await fs.writeFile(path.join(output,"Seven-Gestion-Reception.png"),(await win.webContents.capturePage()).toPNG());
+
   // Exercise the real inline RFID panel using an entirely fake hardware bridge.
   const rfid=await win.webContents.executeJavaScript(
    '(async function(){'+
