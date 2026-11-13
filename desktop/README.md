@@ -89,3 +89,13 @@ La réception voit un récapitulatif de l'affectation et des dates, copie les pa
 Ne pas confondre la révocation informatique d'un enregistrement RFID avec l'invalidation physique d'une carte acceptée par une serrure hors ligne. Aucune commande de firmware, aucun encodage automatique et aucune intervention sur les cartes maîtresses n'ont été ajoutés.
 
 Tests du code : `npm run check && npm test`. Une compilation Windows et la validation matérielle restent indispensables avant exploitation.
+
+## Version 0.2.8 — RFID directement dans Seven Gestion Windows
+
+**Plus d'ouverture de Seven RFID Studio à la réception.** Le module « Cartes RFID » propose **Lire**, **Écrire carte client** et **Effacer badge test** dans la fenêtre Seven. Les appels sont effectués par un processus .NET x86 invisible (`SevenRfidBridge.exe`) vers les DLL officielles P50. `CardLock.exe` reste une dépendance et doit être ouvert ; Seven peut lancer son exécutable installé.
+
+L'hôtel configure l'identifiant fabricant, puis associe bâtiment, étage, chambre Seven et numéro interne de serrure. Ces paramètres sont conservés dans le stockage **chiffré local au PC Windows, par hôtel** et sont partagés entre collaborateurs du même profil Windows. **Ils ne se synchronisent pas entre machines.** Le client doit d'abord avoir effectué son check-in. L'interface permet une expiration exacte, le numéro de carte (0–15) et le DAI (0–255). La carte CLIENT est relue par le SDK après écriture, et seul un succès avec correspondance serrure/expiration déclenche l'enregistrement dans le registre Seven via `seven_rfid_issue`.
+
+Cette nouvelle intégration n'a pas encore été testée physiquement sur le lecteur S18 ; **les mutations sont limitées aux badges de test et serrures de test isolées** tant que la validation n'est pas réalisée. La révocation informatique n'invalide pas un badge accepté par une serrure hors ligne ; l'effacement physique est séparé. L'interface historique et les DLL de Seven RFID Studio 2.2 ne sont ni modifiées ni supprimées, pour permettre un retour à la version validée.
+
+Tests : `npm run check && npm test && npm run test:layout` sur Windows. La compilation du nouveau moteur x86 et l'intégration physique doivent être vérifiées dans GitHub Actions et sur un vrai poste S18.
