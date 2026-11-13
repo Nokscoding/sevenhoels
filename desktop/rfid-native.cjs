@@ -1,6 +1,6 @@
 "use strict";
 /* One-shot, headless P50 SDK process. Does not use the UI of Seven RFID Studio.
- * CardLock remains a prerequisite; all card mutations are confirmed test operations.
+ * CardLock remains a prerequisite; every card mutation needs explicit authorization.
  * Never pass raw SDK data, manufacturer secrets or arbitrary executable paths.
  */
 const path=require("node:path");
@@ -71,7 +71,7 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
    return {ok:false,message:"Opération RFID inconnue."};
   if(!UUID.test(String(input.hotelId||""))||!UUID.test(String(input.userId||"")))
    return {ok:false,message:"Hôtel ou utilisateur invalide."};
-  if(input.operation!=="read"&&(!UUID.test(String(input.roomId||""))||input.confirmTest!==true))
+  if(input.operation!=="read"&&(input.operation==="issue"&&!UUID.test(String(input.roomId||""))||input.confirmAuthorization!==true))
    return {ok:false,message:"Chambre et confirmation de badge de test obligatoires."};
   if(input.operation==="issue"){
    if(!DATE.test(input.expiresAt)||!Number.isInteger(input.cardNo)||input.cardNo<0||input.cardNo>15||
@@ -86,7 +86,7 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
    if(input.operation!=="read"&&!vendorHotelId)
     return {ok:false,message:"Configurer d'abord l'identifiant fabricant de cet hôtel."};
    let lockNo="";
-   if(input.operation!=="read"){
+   if(input.operation==="issue"){
     const entries=await layout.get({userId:input.userId,hotelId:input.hotelId});
     const found=entries.find(row=>row.roomId===input.roomId);
     if(!found)return {ok:false,message:"Associez d'abord la chambre à sa serrure."};
@@ -97,7 +97,7 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
     cardNo:input.operation==="issue"?input.cardNo:0,
     dai:input.operation==="issue"?input.dai:1,
     expiresAt:input.operation==="issue"?input.expiresAt:"",
-    confirmTest:input.confirmTest===true});
+    confirmAuthorization:input.confirmAuthorization===true});
   }catch(error){
    return {ok:false,message:"Lecteur indisponible : "+String(error?.message||"erreur locale").slice(0,150)};
   }finally{busy=false;}
