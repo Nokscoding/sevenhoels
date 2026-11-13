@@ -70,3 +70,15 @@ Pour créer un brouillon GitHub Releases depuis Windows **sans GitHub Actions**,
 Ne jamais envoyer ce jeton par e-mail ou dans une conversation et ne jamais le sauvegarder dans le dépôt. Testez puis publiez le brouillon GitHub Release ; les postes installés le détecteront au prochain démarrage.
 
 **Incident constaté le 10 novembre 2026 :** les workflows Actions Windows *et* Linux échouent avant toute étape (liste de steps vide), sans journal de compilation. Cela suggère une restriction d'exécution des runners ou un problème de quotas, **pas une erreur de compilation démontrée**. Vérifier les annotations des exécutions Actions et les limites de facturation / permissions du dépôt avant d'essayer de nouveau.
+
+
+## Mise à jour 0.2.6 — moteur RFID compatible
+
+Le logiciel inclut Seven RFID Studio 2.2 et ses DLL P50, hors de l'archive Electron.
+L'utilisateur retrouve le module dans **Cartes RFID → Ouvrir Seven RFID Studio**.
+Au premier lancement, Seven peut demander de localiser le CardLock.exe déjà installé.
+CardLock doit rester ouvert. Aucun logiciel fabricant n'est modifié ou installé à sa place.
+Les opérations physiques restent celles du studio 2.2, avec validation et badges/serrures de test.
+Les prototypes autonomes 3.x ne sont pas intégrés à cette mise à jour.
+Le registre web continue de fonctionner comme auparavant ; son enregistrement d'UID
+ne doit pas être présenté comme une écriture physique de serrure.

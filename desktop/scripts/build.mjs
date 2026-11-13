@@ -1,6 +1,7 @@
 import {build} from "esbuild";
 import fs from "node:fs/promises";
 import path from "node:path";
+import {spawnSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 
 const current=path.dirname(fileURLToPath(import.meta.url));
@@ -11,6 +12,8 @@ const root=path.resolve(desktop,"..");
 const source=process.env.SEVEN_ADMIN_SOURCE_DIR
  ?path.resolve(process.env.SEVEN_ADMIN_SOURCE_DIR):path.join(root,"erp");
 const dist=path.join(desktop,"renderer");
+const rfidBuild=spawnSync(process.execPath,[path.join(current,"build-rfid.mjs")],{stdio:"inherit"});
+if(rfidBuild.status!==0)throw Error("RFID compatibility module build failed");
 
 await fs.rm(dist,{recursive:true,force:true});
 await fs.mkdir(path.join(dist,"vendor"),{recursive:true});
@@ -19,6 +22,7 @@ for(const filename of ["index.html","app.js","notifications.js","config.js","sty
  await fs.copyFile(path.join(source,filename),path.join(dist,filename));
 }
 await fs.cp(path.join(source,"assets"),path.join(dist,"assets"),{recursive:true});
+await fs.copyFile(path.join(desktop,"rfid-studio-ui.js"),path.join(dist,"rfid-studio-ui.js"));
 await fs.copyFile(path.join(desktop,"offline.js"),path.join(dist,"offline.js"));
 await fs.copyFile(path.join(desktop,"offline.css"),path.join(dist,"offline.css"));
 await fs.copyFile(path.join(desktop,"update-ui.js"),path.join(dist,"update-ui.js"));
@@ -29,7 +33,7 @@ const cdn='<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.
 if(!html.includes(cdn))throw Error("Supabase CDN tag not found; update the desktop build script");
 html=html.replace(cdn,'<script src="./vendor/supabase.js" defer></script>');
 html=html.replace('<script src="./app.js" defer></script>',
- '<script src="./offline.js" defer></script><script src="./update-ui.js" defer></script><script src="./app.js" defer></script>');
+ '<script src="./offline.js" defer></script><script src="./update-ui.js" defer></script><script src="./rfid-studio-ui.js" defer></script><script src="./app.js" defer></script>');
 html=html.replace('<link rel="stylesheet" href="./management.css">',
  '<link rel="stylesheet" href="./management.css"><link rel="stylesheet" href="./offline.css"><link rel="stylesheet" href="./update-ui.css">');
 const csp=[

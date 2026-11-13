@@ -144,3 +144,13 @@ Ouvrir le dépôt `Nokscoding/sevenhoels`, branche `develop/seven-foundation`. I
 - Chambre et hôtel : descriptions, galeries photo multiples, choix couverture, import d'images lors de la création. Notifications bureau via API Notification de Edge/Chrome et permission demandée par utilisateur, seulement tant que l'application reste ouverte.
 - Vérification : go test, node --check, 13 modules et 17 formulaires sans exception JS, responsive petit écran, SQL de paie 250 USD : 2 écritures + présence puis rollback, tests RLS inter-hôtels réussis, archive ZIP CRC OK, binaire PE32+ GUI x64. Les tests ont utilisé une simulation navigateur/headless et des requêtes SQL en transactions, pas un vrai PC Windows ni un vrai login de bout en bout.
 - Limites : pas de service de notifications lorsqu'appli fermée, pas de matériel RFID piloté, pas de synchronisation complète hors ligne, pas de paie réglementaire OHADA/CNSS; certaines routes de l'app attendent validation bout en bout sur poste utilisateur et avec de vraies photos. Aucun salarié/presence/paie réel n'a été créé. Code de cette édition Go distinct du code Electron canonique `desktop/`.
+
+
+## 13 novembre 2026 — retour RFID compatible, Seven Windows 0.2.6
+
+- Décision utilisateur : accepter la dépendance à CardLock et revenir au moteur 2.2 qui a fonctionné sur son matériel. Les prototypes autonomes 3.0/3.1 ne sont pas retenus dans Seven Gestion.
+- Code C# 2.2 et SDK P50 Port1/Port2 intégrés sans modification métier, empreintes vérifiées. Compilation .NET x86 pendant la construction Windows ; ressources en dehors d'asar.
+- Accès depuis Cartes RFID dans l'application Windows : ouverture du studio, choix initial du CardLock.exe installé, conservation locale du chemin et attente du service fabricant.
+- Lecture/écriture client/effacement gardent les confirmations et vérifications originales sur badges et serrures de test. Aucun firmware ni base de données fabricant modifié ; aucune mutation automatisée depuis le renderer.
+- Tests locaux : syntaxe, smoke ERP, mise à jour et 10 tests du lanceur compatibles réussis. Rendu Windows préparé depuis le dépôt administrateur courant.
+- La diffusion est préparée sous forme de brouillon GitHub Release après les tests Windows du workflow. La validation d'une mise à jour réelle et du matériel sur le poste utilisateur reste distincte des tests unitaires.

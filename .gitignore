@@ -3,3 +3,6 @@
 node_modules/
 .env
 .env.*
+
+desktop/rfid-studio/runtime/
+desktop/renderer/

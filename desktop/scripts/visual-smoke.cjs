@@ -64,6 +64,25 @@ async function run(){
   const img=await win.webContents.capturePage();
   await fs.writeFile(path.join(output,"Seven-Gestion-Desktop-Layout.png"),img.toPNG());
 
+  // Exercise the desktop RFID entry point with a fake bridge; never start native tools in QA.
+  const rfid=await win.webContents.executeJavaScript(
+   '(async function(){'+
+   'window.__rfidLaunches=0;window.sevenDesktop={getRfidStudioStatus:async()=>({supported:true,available:true,version:"2.2",servicePort:10086}),openRfidStudio:async()=>{window.__rfidLaunches++;return {ok:true}},openRfidCardLock:async()=>({ok:true})};'+
+   'await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="./rfid-studio-ui.js";script.onload=resolve;script.onerror=()=>reject(Error("RFID entry point not loadable"));document.body.append(script)});'+
+   'await new Promise(resolve=>setTimeout(resolve,50));'+
+   'document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="rfidPage"));'+
+   'const panel=document.getElementById("sevenRfidStudioPanel"),button=document.getElementById("sevenRfidStudioOpen");'+
+   'if(!panel||!button||button.disabled)throw Error("Bundled RFID studio entry point unavailable");'+
+   'button.click();await new Promise(resolve=>setTimeout(resolve,20));'+
+   'return {launches:window.__rfidLaunches,visible:panel.getBoundingClientRect().height>100,label:button.textContent,warning:panel.textContent.includes("CardLock"),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};})()',true
+  );
+  assert.equal(rfid.launches,1,"RFID button must invoke only the dedicated bridge");
+  assert.equal(rfid.visible,true,"RFID compatibility panel must be visible");
+  assert.equal(rfid.warning,true,"CardLock dependency must be visible to reception");
+  assert.ok(rfid.overflow<=3,"RFID panel must not overflow the desktop");
+  await fs.writeFile(path.join(output,"Seven-Gestion-RFID-Compat.png"),(await win.webContents.capturePage()).toPNG());
+  console.log("Seven RFID compatibility UI validated:",JSON.stringify(rfid));
+
   // Mount the real production updater UI with a safe fake read-only bridge.
   // Do not send any booking or authentication requests during this test.
   const popup=await win.webContents.executeJavaScript(

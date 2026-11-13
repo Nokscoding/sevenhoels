@@ -1,7 +1,8 @@
 "use strict";
-const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage} = require("electron");
+const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage,dialog} = require("electron");
 const {autoUpdater}=require("electron-updater");
 const {createUpdateController}=require("./updates.cjs");
+const {createRfidStudioController}=require("./rfid-studio.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const {pathToFileURL} = require("node:url");
@@ -12,6 +13,7 @@ const ROOT=path.join(__dirname,"renderer");
 const CACHE_FILENAME="seven-offline-summary.enc";
 let mainWindow;
 let updateController;
+let rfidStudio;
 
 protocol.registerSchemesAsPrivileged([{
  scheme:SCHEME,privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true,corsEnabled:true}
@@ -144,6 +146,19 @@ else{
   ipcMain.handle("seven:update-install",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return updateController.install();
+  });
+  rfidStudio=createRfidStudioController({app,dialog,getWindow:()=>mainWindow});
+  ipcMain.handle("seven:rfid-studio-status",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidStudio.status();
+  });
+  ipcMain.handle("seven:rfid-studio-open",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidStudio.openStudio();
+  });
+  ipcMain.handle("seven:rfid-cardlock-open",event=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidStudio.openCardLock();
   });
   createWindow();
   updateController.start();
