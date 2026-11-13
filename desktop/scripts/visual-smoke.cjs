@@ -103,14 +103,14 @@ async function run(){
    'if(!panel||!read||!issue||read.disabled)throw Error("Native RFID panel unavailable");'+
    'read.click();await new Promise(resolve=>setTimeout(resolve,65));'+
    'return {operations:window.__rfidOps,visible:panel.getBoundingClientRect().height>100,issuePresent:!!issue,'+
-    'warning:panel.textContent.includes("CardLock"),'+
+    'warning:panel.textContent.includes("lecteur"),'+
     'separateStudio:panel.textContent.includes("Ouvrir Seven RFID Studio"),'+
     'overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};})()',true
   );
   assert.deepEqual(rfid.operations,["read"],"Reading must invoke the inline native bridge");
   assert.equal(rfid.visible,true,"Native RFID panel must be visible");
   assert.equal(rfid.issuePresent,true,"Native encode button must be present");
-  assert.equal(rfid.warning,true,"CardLock dependency must be clearly visible");
+  assert.equal(rfid.warning,true,"The reception screen must show how to start the reader");
   assert.equal(rfid.separateStudio,false,"No separate Studio launch UI");
   assert.ok(rfid.overflow<=3,"Native RFID panel must not overflow the desktop");
   await fs.writeFile(path.join(output,"Seven-Gestion-RFID-Inline.png"),(await win.webContents.capturePage()).toPNG());
