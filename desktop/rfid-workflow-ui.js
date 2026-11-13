@@ -1,6 +1,6 @@
 /* Seven Gestion Windows: true native RFID inside the ERP (P50 ProUSB, x86).
  * No separate Studio UI; hardware still needs original CardLock open.
- * All mutations require explicit test-card confirmation and SDK read-back.
+ * All mutations require staff confirmation and a verified SDK read-back.
  */
 (function(){
  "use strict";
@@ -10,43 +10,42 @@
  panel.className="panel seven-rfid-workflow";
  panel.id="sevenRfidWorkflow";
  panel.innerHTML=
-  '<div class="panel-heading"><div><span class="overline">SEVEN · ENCODEUR RFID S18</span>'
-  +'<h2>Cartes clients · Directement dans Seven</h2>'
-  +'<p class="message-note">Lecture, émission et effacement depuis cette fenêtre. Le logiciel CardLock doit rester ouvert pour initialiser le lecteur.</p></div></div>'
+  '<div class="panel-heading"><div><span class="overline">SEVEN · CARTES DE CHAMBRE</span>'
+  +'<h2>Créer et gérer les cartes des clients</h2>'
+  +'<p class="message-note">Remettez la carte d’accès au client après son arrivée. Toutes les opérations se font ici, sans ouvrir un autre écran.</p></div></div>'
   +'<div class="seven-rfid-inline-status" id="sevenRfidDeviceStatus" role="status">Vérification du lecteur…</div>'
   +'<div class="seven-rfid-section" id="sevenRfidConfiguration">'
-  +'<h3>1 · Configuration des bâtiments, étages et serrures</h3>'
+  +'<h3>Paramètres des chambres et des serrures</h3>'
   +'<form id="sevenRfidVendorForm" class="seven-rfid-vendor-form">'
-  +'<label>Identifiant hôtel du fabricant (P50)<input type="number" min="1" max="2147483647" step="1" id="sevenRfidVendorId" required placeholder="ID autorisé du système CardLock"></label>'
+  +'<label>Numéro du système de serrures de cet hôtel<input type="number" min="1" max="2147483647" step="1" id="sevenRfidVendorId" required placeholder="Numéro communiqué par votre installateur"></label>'
   +'<button type="submit" class="outline">Enregistrer l’identifiant</button></form>'
-  +'<p class="hint">Utiliser uniquement le numéro autorisé de votre installation. Cet identifiant est chiffré localement.</p>'
+  +'<p class="hint">À renseigner une seule fois par hôtel. Le numéro est conservé sur ce PC.</p>'
   +'<form id="sevenRfidLockForm" class="seven-rfid-workflow-grid" autocomplete="off">'
   +'<label>Chambre Seven<select id="sevenRfidRoom" required></select></label>'
   +'<label>Bâtiment<input id="sevenRfidBuilding" maxlength="60" required placeholder="Seven 71"></label>'
   +'<label>Étage<input id="sevenRfidFloor" maxlength="30" required placeholder="1"></label>'
-  +'<label>Numéro interne de serrure (6 caractères HEX)<input id="sevenRfidLock" maxlength="6" pattern="[0-9A-Fa-f]{6}" required placeholder="01020A"></label>'
+  +'<label>Code de la serrure (6 caractères)<input id="sevenRfidLock" maxlength="6" pattern="[0-9A-Fa-f]{6}" required placeholder="01020A"></label>'
   +'<button class="primary" type="submit" id="sevenRfidSaveLock">Enregistrer la serrure</button>'
   +'</form><p id="sevenRfidLockStatus" class="hint" role="status"></p>'
   +'<div id="sevenRfidLayoutRows" class="seven-rfid-workflow-list"></div></div>'
-  +'<div class="seven-rfid-handoff"><h3>2 · Enregistrement du client et encodage</h3>'
-  +'<label>Séjour avec check-in effectué<select id="sevenRfidBooking"></select></label>'
+  +'<div class="seven-rfid-handoff"><h3>Remettre la carte au client</h3>'
+  +'<label>Client déjà arrivé<select id="sevenRfidBooking"></select></label>'
   +'<div id="sevenRfidCardSummary" class="seven-rfid-card-summary" role="status" aria-live="polite"></div>'
-  +'<div class="seven-rfid-workflow-grid">'
-  +'<label>SDK<select id="sevenRfidPort"><option value="Port1">Port1 (S18)</option><option value="Port2">Port2</option></select></label>'
-  +'<label>Expiration de la carte<input type="datetime-local" id="sevenRfidExpiry" required></label>'
+  +'<div class="seven-rfid-guest-fields"><label>Date et heure de fin de séjour<input type="datetime-local" id="sevenRfidExpiry" required></label></div>'
+  +'<details class="seven-rfid-advanced"><summary>Réglages du lecteur</summary><div class="seven-rfid-workflow-grid">'
+  +'<label>Connexion<select id="sevenRfidPort"><option value="Port1">Lecteur principal</option><option value="Port2">Autre lecteur</option></select></label>'
   +'<label>Numéro de carte (0–15)<input type="number" id="sevenRfidCardNo" min="0" max="15" value="0"></label>'
-  +'<label>DAI<input type="number" id="sevenRfidDai" min="0" max="255" value="1"></label>'
-  +'</div>'
+  +'<label>DAI<input type="number" id="sevenRfidDai" min="0" max="255" value="1"></label></div></details>'
   +'<label class="seven-rfid-test-confirm"><input type="checkbox" id="sevenRfidConfirmTest">'
-  +'Je confirme utiliser uniquement un badge de test et une serrure de test isolée.</label>'
+  +'Je confirme avoir vérifié le client, sa chambre et la carte présentée.</label>'
   +'<div class="seven-rfid-workflow-actions">'
-  +'<button type="button" id="sevenRfidRead" class="outline">Lire le badge</button>'
-  +'<button type="button" id="sevenRfidIssue" class="primary">Écrire la carte client</button>'
-  +'<button type="button" id="sevenRfidErase" class="outline">Effacer le badge test</button>'
-  +'<button type="button" id="sevenRfidCardLock" class="outline">Ouvrir CardLock</button></div>'
+  +'<button type="button" id="sevenRfidRead" class="outline">Lire une carte</button>'
+  +'<button type="button" id="sevenRfidIssue" class="primary">Créer la carte du client</button>'
+  +'<button type="button" id="sevenRfidErase" class="outline">Effacer une carte</button>'
+  +'<button type="button" id="sevenRfidCardLock" class="outline">Démarrer le lecteur</button></div>'
   +'<p id="sevenRfidHandoffStatus" class="seven-rfid-native-result" role="status" aria-live="polite">'
-  +'Présentez une carte sur le S18 pour commencer. L’encodage est confirmé uniquement après relecture.</p>'
-  +'<p class="hint">Les cartes de serrures hors ligne ne sont pas annulées par une simple révocation du registre Seven. Vérifiez toujours le badge sur la serrure de test.</p>'
+  +'Posez une carte sur le lecteur, choisissez le client et cliquez sur « Créer la carte ».</p>'
+  +'<p class="hint">Pour une carte perdue, prévenez le responsable : la suppression dans Seven ne bloque pas automatiquement une ancienne carte sur une serrure hors ligne.</p>'
   +'</div>';
  page.insertBefore(panel,page.querySelector(".seven-rfid-intro")||page.firstElementChild);
  const legacy=page.querySelector(".seven-rfid-intro");if(legacy)legacy.hidden=true;
@@ -76,21 +75,21 @@
  function updateButtons(){
   get("sevenRfidRead").disabled=busy||!ctx;
   get("sevenRfidIssue").disabled=!canWrite();
-  get("sevenRfidErase").disabled=!canWrite();
+  get("sevenRfidErase").disabled=busy||!ctx||!vendorHotelId||!get("sevenRfidConfirmTest").checked;
   get("sevenRfidCardLock").disabled=busy;
  }
  function renderSummary(){
   const summary=get("sevenRfidCardSummary"),booking=bookingById(get("sevenRfidBooking").value);
   const room=booking&&roomById(booking.room_id),entry=room&&entryFor(room.id);
   summary.replaceChildren();
-  if(!booking){summary.textContent="Choisissez un séjour ayant effectué son check-in.";updateButtons();return;}
+  if(!booking){summary.textContent="Choisissez un client qui a déjà été enregistré à son arrivée.";updateButtons();return;}
   const fields=[
    ["Hôtel",ctx.hotelName],["Séjour",booking.reference||"—"],
    ["Chambre",room?.number||"—"],["Bâtiment",entry?.building||"Non configuré"],
    ["Étage",entry?.floor||"Non configuré"],
-   ["Serrure fabricant",entry?.lockNo||"Non configuré"],
+   ["Code serrure",entry?.lockNo||"Non configuré"],
    ["Arrivée",booking.check_in||"—"],["Départ",booking.check_out||"—"],
-   ["ID fabricant",vendorHotelId?"Configuré":"Non configuré"]
+   ["Configuration du lecteur",vendorHotelId?"Prête":"À compléter"]
   ];
   for(const [label,value] of fields){
    const row=document.createElement("div"),a=document.createElement("strong"),b=document.createElement("span");
@@ -98,7 +97,7 @@
   }
   if(!entry||!vendorHotelId){
    const notice=document.createElement("p");notice.className="seven-rfid-warning";
-   notice.textContent="Configurez le numéro de serrure et l’identifiant fabricant avant toute émission.";
+   notice.textContent="Cette chambre doit être associée à une serrure avant la création de la carte.";
    summary.append(notice);
   }
   updateButtons();
@@ -123,7 +122,7 @@
    line.textContent="Chambre "+room.number+" · "+entry.building+" · étage "+entry.floor+" · serrure "+entry.lockNo;
    list.append(line);
   }
-  if(!layout.length)list.textContent="Aucune serrure configurée sur ce PC.";
+  if(!layout.length)list.textContent="Aucune chambre n’est encore reliée à une serrure.";
   setLockFields();renderSummary();
  }
  async function refresh(){
@@ -143,10 +142,10 @@
  async function deviceStatus(){
   try{
    const data=await api.getNativeRfidStatus();
-   get("sevenRfidDeviceStatus").textContent=!data.available?"Moteur natif indisponible : vérifiez l'installation Windows."
-    :data.cardLockReady?"Lecteur compatible : service CardLock détecté."
-    :"Lecteur non initialisé : ouvrez CardLock. Seven utilisera directement son SDK.";
-  }catch{get("sevenRfidDeviceStatus").textContent="Impossible de vérifier le moteur RFID.";}
+   get("sevenRfidDeviceStatus").textContent=!data.available?"Le lecteur est indisponible. Vérifiez l’installation de Seven sur Windows."
+    :data.cardLockReady?"Lecteur prêt."
+    :"Le lecteur n’est pas encore prêt. Cliquez sur « Démarrer le lecteur ».";
+  }catch{get("sevenRfidDeviceStatus").textContent="Le lecteur est momentanément indisponible.";}
  }
  get("sevenRfidRoom").addEventListener("change",setLockFields);
  get("sevenRfidBooking").addEventListener("change",()=>{
@@ -182,16 +181,17 @@
  async function operation(name){
   if(!ctx||busy)return;
   const stay=bookingById(get("sevenRfidBooking").value),roomId=stay?.room_id;
-  if(name!=="read"&&!canWrite())return;
+  if(name==="issue"&&!canWrite())return;
+  if(name==="erase"&&(busy||!vendorHotelId||!get("sevenRfidConfirmTest").checked))return;
   if(name!=="read"&&!window.confirm(
-     name==="issue"?"Confirmer l’écriture physique sur un badge et une serrure de TEST isolés ?":
-     "Confirmer l’effacement physique irréversible du badge CLIENT de TEST ?"))return;
+     name==="issue"?"Créer maintenant une carte pour la chambre du client sélectionné ?":
+     "Effacer définitivement les informations de cette carte client ? Vérifiez qu’il ne s’agit pas d’une carte encore utilisée."))return;
   busy=true;updateButtons();message.dataset.result="pending";
-  message.textContent=name==="read"?"Lecture du badge en cours…":name==="issue"?"Encodage et relecture de contrôle en cours…":"Effacement et relecture en cours…";
+  message.textContent=name==="read"?"Lecture du badge en cours…":name==="issue"?"Création et vérification de la carte en cours…":"Effacement et relecture en cours…";
   const payload={operation:name,userId:ctx.userId,hotelId:ctx.hotelId,roomId,
    port:get("sevenRfidPort").value,expiresAt:get("sevenRfidExpiry").value,
    cardNo:Number(get("sevenRfidCardNo").value),dai:Number(get("sevenRfidDai").value),
-   confirmTest:name!=="read"&&get("sevenRfidConfirmTest").checked};
+   confirmAuthorization:name!=="read"&&get("sevenRfidConfirmTest").checked};
   try{
    const result=await api.runNativeRfid(payload);
    message.dataset.result=result.ok?"success":"error";
@@ -214,9 +214,9 @@
  get("sevenRfidErase").addEventListener("click",()=>operation("erase"));
  get("sevenRfidCardLock").addEventListener("click",async()=>{
   if(busy)return;
-  message.textContent="Ouverture du logiciel fabricant…";
-  try{const r=await api.openRfidCardLock();message.textContent=r.ok?"CardLock lancé. Gardez-le ouvert ; utilisez ici les boutons de Seven.":r.message||"Démarrage annulé.";}
-  catch(error){message.textContent=error?.message||"Impossible d'ouvrir CardLock.";}
+  message.textContent="Démarrage du lecteur…";
+  try{const r=await api.openRfidCardLock();message.textContent=r.ok?"Lecteur démarré. Vous pouvez créer la carte directement dans Seven.":r.message||"Démarrage annulé.";}
+  catch(error){message.textContent=error?.message||"Impossible de démarrer le lecteur.";}
   await deviceStatus();
  });
  window.addEventListener("seven:rfid-context",()=>refresh());
