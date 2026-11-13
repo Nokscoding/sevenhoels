@@ -68,3 +68,12 @@ La prochaine étape sera un journal local chiffré d'opérations autorisées, av
 ## État de validation
 
 Le code source, l'interface et la compilation sont configurés. Les tests de syntaxe peuvent être lancés via `npm run check`. **Un véritable build Windows, l'installation sur un PC Seven et les tests fonctionnels sur comptes réels sont nécessaires avant l'exploitation.** Ne pas annoncer le logiciel comme final ou le diffuser comme tel.
+
+## Lecteur RFID USB S18 — test à la réception (v0.2.5)
+
+1. Brancher le S18 au PC Windows et présenter une carte compatible.
+2. Ouvrir **Cartes RFID** puis cliquer **Tester le lecteur** : le test capte les caractères saisis en mode clavier, sans sauvegarder ni transmettre le numéro de carte.
+3. Si le test réussit, sélectionner **Enregistrer une carte**, choisir un séjour ayant effectué son check-in, cliquer **Activer le lecteur**, puis poser la carte. Si le lecteur transmet Entrée, la validation est automatique ; sinon utiliser le bouton **Enregistrer la carte**.
+4. Utiliser **Vérifier une carte** pour contrôler l'attribution ; **Révoquer** pour retirer l'autorisation dans Seven Gestion.
+
+Le module fonctionne avec les lecteurs USB qui transmettent le code en **émulation clavier HID**. Un lecteur exposé seulement en port COM/PC-SC nécessite un pilote ou protocole distinct. Si aucun caractère n'arrive, tester la lecture dans le Bloc-notes Windows et noter le mode du périphérique. Le test confirme un numéro lu, pas la compatibilité physique avec une serrure. **Le S18 photographié n'est pas identifié comme encodeur de cartes**, et l'application ne programme aucune serrure. Une révocation dans Seven Gestion ne désactive pas une carte déjà encodée dans une serrure autonome hors ligne. L'attribution et la vérification côté serveur requièrent une connexion et un compte autorisé ; le diagnostic USB seul fonctionne hors ligne.
