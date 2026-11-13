@@ -68,7 +68,7 @@ assert.ok(html.includes('<script src="./rfid-reader.js" defer></script>'),"Diagn
 for(const id of ["receptionPage","receptionCreationPanel","receptionBookingForm","receptionDirectCheckIn","receptionIssueCard","receptionTodayList"]){
  assert.ok(html.includes('id="'+id+'"'),"Module accueil client manquant : "+id);
 }
-for(const key of ["function renderReceptionToday()","currentRole()==="reception"?"reception"","data-rfid-prepare","seven_transition_stay"]){
+for(const key of ["function renderReceptionToday()",'currentRole()==="reception"?"reception"',"data-rfid-prepare","seven_transition_stay"]){
  assert.ok(app.includes(key),"Accueil client ou émission de carte absente : "+key);
 }
 assert.ok(build.includes("SEVEN_ADMIN_SOURCE_DIR"),"Source du portail admin séparé absente");
