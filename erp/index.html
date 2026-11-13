@@ -159,11 +159,11 @@
     <label id="rfidEnrollFields" hidden>Séjour avec arrivée enregistrée <select id="rfidStaySelect"><option value="">Sélectionner le séjour</option></select></label>
    </div>
    <label class="seven-rfid-input-label" for="rfidScanInput">Numéro lu par le lecteur RFID
-     <input id="rfidScanInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="32" minlength="6" inputmode="none" placeholder="Cliquez sur Activer le lecteur, puis présentez une carte" required>
+     <input id="rfidScanInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="64" minlength="6" inputmode="none" placeholder="Cliquez sur Activer le lecteur, puis présentez une carte" required>
    </label>
-   <div class="seven-rfid-controls"><button class="seven-rfid-focus" type="button" id="rfidReaderFocus">Activer le lecteur</button><button type="submit" class="primary" id="rfidScanSubmit">Vérifier la carte</button></div>
+   <div class="seven-rfid-controls"><button class="seven-rfid-focus" type="button" id="rfidReaderFocus">Activer le lecteur</button><button class="seven-rfid-focus" type="button" id="rfidReaderTest" aria-pressed="false">Tester le lecteur</button><button type="submit" class="primary" id="rfidScanSubmit">Vérifier la carte</button></div>
    <p id="rfidReaderHint" class="hint">Si le S18 fonctionne en émulation clavier, il renseigne ce champ automatiquement. S'il envoie Entrée, le formulaire sera validé immédiatement.</p>
-   <div id="rfidScanResult" role="status" aria-live="polite" class="seven-rfid-result"></div>
+   <p id="rfidReaderTestResult" role="status" aria-live="polite" class="seven-rfid-result"></p><div id="rfidScanResult" role="status" aria-live="polite" class="seven-rfid-result"></div>
  </form>
 </div>
 <div class="panel">
@@ -183,4 +183,4 @@
 <label class="checkbox-line confirm-contact"><input type="checkbox" id="contactVerified" required> J’ai contacté le client et vérifié ses dates avant de confirmer.</label>
 <button id="confirmAllocation" class="primary" type="submit">Confirmer la réservation</button>
 </form></dialog>
-<script src="./config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script><script src="./notifications.js" defer></script><script src="./app.js" defer></script></body></html>
+<script src="./config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script><script src="./notifications.js" defer></script><script src="./app.js" defer></script><script src="./rfid-reader.js" defer></script></body></html>
