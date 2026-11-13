@@ -65,6 +65,12 @@ assert.ok(build.includes('"rfid.css"'),"RFID reception stylesheet not included i
 assert.ok(build.includes('"rfid-reader.js"'),"RFID diagnostic script missing from Electron build");
 assert.ok(html.includes('<script src="./rfid-reader.js" defer></script>'),"Diagnostic RFID not loaded");
 
+for(const id of ["receptionPage","receptionCreationPanel","receptionBookingForm","receptionDirectCheckIn","receptionIssueCard","receptionTodayList"]){
+ assert.ok(html.includes('id="'+id+'"'),"Module accueil client manquant : "+id);
+}
+for(const key of ["function renderReceptionToday()","currentRole()==="reception"?"reception"","data-rfid-prepare","seven_transition_stay"]){
+ assert.ok(app.includes(key),"Accueil client ou émission de carte absente : "+key);
+}
 assert.ok(build.includes("SEVEN_ADMIN_SOURCE_DIR"),"Source du portail admin séparé absente");
 const updateController=await read("desktop/updates.cjs");
 const updateUI=await read("desktop/update-ui.js");
