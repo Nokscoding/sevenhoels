@@ -77,3 +77,15 @@ Le code source, l'interface et la compilation sont configurés. Les tests de syn
 4. Utiliser **Vérifier une carte** pour contrôler l'attribution ; **Révoquer** pour retirer l'autorisation dans Seven Gestion.
 
 Le module fonctionne avec les lecteurs USB qui transmettent le code en **émulation clavier HID**. Un lecteur exposé seulement en port COM/PC-SC nécessite un pilote ou protocole distinct. Si aucun caractère n'arrive, tester la lecture dans le Bloc-notes Windows et noter le mode du périphérique. Le test confirme un numéro lu, pas la compatibilité physique avec une serrure. **Le S18 photographié n'est pas identifié comme encodeur de cartes**, et l'application ne programme aucune serrure. Une révocation dans Seven Gestion ne désactive pas une carte déjà encodée dans une serrure autonome hors ligne. L'attribution et la vérification côté serveur requièrent une connexion et un compte autorisé ; le diagnostic USB seul fonctionne hors ligne.
+
+## Préparation des cartes après check-in — intégration compatible S18
+
+Le moteur natif **Seven RFID Studio 2.2** et les DLL du SDK P50 sont conservés sans modification. **CardLock.exe doit rester ouvert** pour que le S18 fonctionne.
+
+Dans Seven Gestion Windows, après le check-in, la réception trouve le bouton « Préparer la carte » dans Séjours. Le responsable renseigne pour chaque chambre Seven son bâtiment, son étage et le **numéro interne de serrure** en six caractères hexadécimaux (par exemple `01020A`). Ces paramètres sont enregistrés **localement, chiffrés avec Windows safeStorage**, séparément par utilisateur et par établissement. Ils ne sont pas encore synchronisés entre différents PC : l'exploitation multi-postes demandera des tables sécurisées et une politique Supabase RLS.
+
+La réception voit un récapitulatif de l'affectation et des dates, copie les paramètres et ouvre Seven RFID Studio 2.2. **Le transfert des paramètres dans le studio reste manuel.** Le logiciel ne revendique pas de réussite de programmation physique ; l'opérateur vérifie l'ID hôtel, les dates/heures et le numéro de serrure, puis contrôle le badge par relecture dans Studio et sur une serrure de test isolée.
+
+Ne pas confondre la révocation informatique d'un enregistrement RFID avec l'invalidation physique d'une carte acceptée par une serrure hors ligne. Aucune commande de firmware, aucun encodage automatique et aucune intervention sur les cartes maîtresses n'ont été ajoutés.
+
+Tests du code : `npm run check && npm test`. Une compilation Windows et la validation matérielle restent indispensables avant exploitation.
