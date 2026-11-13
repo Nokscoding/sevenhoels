@@ -6,7 +6,7 @@
 const path=require("node:path");
 const fs=require("node:fs/promises");
 const {spawn}=require("node:child_process");
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE=/^\d{4}-\d\d-\d\dT\d\d:\d\d$/;
 function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spawn,
  platform=process.platform,resourcesPath=process.resourcesPath,
