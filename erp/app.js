@@ -700,7 +700,7 @@ el("rfidScanForm").addEventListener("submit",async e=>{
   const data=result.data||{};
   if(mode==="issue"){
    rfidResult.dataset.result="success";
-   rfidResult.textContent="Carte enregistrée pour la chambre "+(state.rooms.find(r=>r.id===stay.room_id)?.number||"")+". Elle sera refusée dès la fin du séjour ou après révocation.";
+   rfidResult.textContent="Carte enregistrée pour la chambre "+(state.rooms.find(r=>r.id===stay.room_id)?.number||"")+". Le registre Seven ne désactive pas physiquement les cartes de serrures hors ligne : vérifiez l'encodage et l'expiration dans Seven RFID Studio.";
    await loadAll();
   }else if(data.valid){
    rfidResult.dataset.result="success";
