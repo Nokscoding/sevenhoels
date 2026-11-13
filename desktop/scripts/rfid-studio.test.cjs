@@ -37,7 +37,7 @@ test("bundled compatibility source and vendor archive exactly pinned",()=>{
 test("existing CardLock service opens original studio outside asar without shell",async()=>{
  const c=context();const result=await c.controller.openStudio();
  assert.equal(result.ok,true);assert.equal(c.launched.length,1);
- assert.equal(c.launched[0].file,"/app/resources/rfid-studio/SevenRFIDStudio.exe");
+ assert.equal(c.launched[0].file,path.join("/app/resources","rfid-studio","SevenRFIDStudio.exe"));
  assert.deepEqual(c.launched[0].args,[]);assert.equal(c.launched[0].options.shell,false);
  assert.equal(c.dialogs.length,0);
  await c.controller.openStudio();assert.equal(c.launched.length,1,"avoid duplicate studio while tracked child runs");

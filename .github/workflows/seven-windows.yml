@@ -55,9 +55,13 @@ jobs:
       - name: Check source and updater behavior
         run: |
           npm run check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --check ../seven-admin/app.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --check ../seven-admin/notifications.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build installer or prepare draft update
         shell: pwsh
         env:
