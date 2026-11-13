@@ -2,7 +2,7 @@
 const cfg=window.SEVEN_CONFIG||{},sb=(cfg.url&&cfg.publishableKey&&window.supabase)?window.supabase.createClient(cfg.url,cfg.publishableKey):null;
 const state={user:null,roles:[],hotels:[],hotelId:"",view:"dashboard",requests:[],rooms:[],roomTypes:[],stays:[],services:[],attendance:[],employees:[],rfid:[],media:[],allocatingRequestId:null};
 const el=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const names={dashboard:["Vue d'ensemble","Toutes les informations essentielles de votre établissement."],requests:["Réservations à confirmer","Contactez les clients, vérifiez les disponibilités et confirmez les réservations."],stays:["Séjours & arrivées","Gérez les confirmations, arrivées et départs des clients."],rooms:["Gestion des chambres","Suivez la disponibilité opérationnelle des chambres."],services:["Espaces et services","Gérez les salles, restaurants et installations."],attendance:["Présences","Enregistrez les entrées et sorties de votre équipe."],access:["Accès et permissions","Contrôlez les autorisations par établissement."],notifications:["Notifications","Suivez les événements importants de vos établissements."],management:["Espace responsables","Pilotage des équipes, de l’hôtel et des opérations."],properties:["Établissements","Gérez les hôtels et appartements de la chaîne Seven."],rfid:["Cartes RFID","Registre et préparation de la gestion des accès."]};
+const names={reception:["Accueil / Réception","Enregistrez les clients sur place, attribuez une chambre et remettez leur carte."],dashboard:["Vue d'ensemble","Toutes les informations essentielles de votre établissement."],requests:["Réservations à confirmer","Contactez les clients, vérifiez les disponibilités et confirmez les réservations."],stays:["Séjours & arrivées","Gérez les confirmations, arrivées et départs des clients."],rooms:["Gestion des chambres","Suivez la disponibilité opérationnelle des chambres."],services:["Espaces et services","Gérez les salles, restaurants et installations."],attendance:["Présences","Enregistrez les entrées et sorties de votre équipe."],access:["Accès et permissions","Contrôlez les autorisations par établissement."],notifications:["Notifications","Suivez les événements importants de vos établissements."],management:["Espace responsables","Pilotage des équipes, de l’hôtel et des opérations."],properties:["Établissements","Gérez les hôtels et appartements de la chaîne Seven."],rfid:["Cartes RFID","Registre et préparation de la gestion des accès."]};
 const statusNames={pending:"À contacter",confirmed:"Confirmée",checked_in:"Occupée",checked_out:"Terminé",no_show:"Non-présenté",approved:"Approuvée",declined:"Refusée",cancelled:"Annulée",available:"Disponible",occupied:"Occupée",cleaning:"Nettoyage",maintenance:"Maintenance",out_of_service:"Hors service"};
 const roleNames={supervisor:"Modérateur général",director:"Directeur général",manager:"Gérant",reception:"Réceptionniste",housekeeping:"Entretien",accountant:"Comptabilité"};
 function flash(message){el("flash").textContent=message;el("flash").scrollIntoView({block:"nearest",behavior:"smooth"});}
@@ -25,6 +25,7 @@ function canAssignRole(role){
 }
 function globalRole(role){return role==="director"||role==="supervisor";}
 function roleNav(){
+ document.querySelector('[data-view="reception"]').hidden=!canHandle();
  document.querySelector('[data-view="requests"]').hidden=!canHandle();
  document.querySelector('[data-view="stays"]').hidden=!(canHandle()||currentRole()==="accountant");
  document.querySelector(".supervisor-link").hidden=!canManageAccess();
@@ -77,12 +78,12 @@ function showApp(){
  populateHotelSelectors();
  roleNav();
  el("serviceForm").hidden=!canManage();
- const landing=leadership()?"properties":currentRole()==="manager"?"management":currentRole()==="reception"?"requests":currentRole()==="housekeeping"?"rooms":"dashboard";
+ const landing=leadership()?"properties":currentRole()==="manager"?"management":currentRole()==="reception"?"reception":currentRole()==="housekeeping"?"rooms":"dashboard";
  goto(landing);
 }
 async function bootstrap(){if(!sb){showLogin("La configuration d'accès au serveur est manquante.");return;}const auth=await sb.auth.getUser();if(auth.error||!auth.data.user){showLogin();return;}state.user=auth.data.user;const roles=await sb.from("seven_roles").select("id,user_id,hotel_id,role,full_name,active").eq("user_id",state.user.id).eq("active",true);if(roles.error||!roles.data?.length){await sb.auth.signOut();state.user=null;showLogin("Ce compte n'a pas encore reçu d'autorisation. Contactez la supervision.");return;}state.roles=roles.data;
 const hotels=await sb.from("hotels").select("id,name,slug,city,address,phone,email,description,active").order("name");if(hotels.error){showLogin("Impossible de charger les établissements.");return;}state.hotels=leadership()?hotels.data:hotels.data.filter(h=>h.active&&state.roles.some(r=>r.hotel_id===h.id));if(!state.hotels.length){showLogin("Aucun établissement attribué.");return;}state.hotelId=state.hotels[0].id;showApp();await Promise.all([loadAll(),window.SevenNotifications.start({supabase:sb,user:state.user.id,properties:state.hotels,navigate:goto,flash})]);}
-function goto(view){if((view==="management"&&!canManage())||(view==="access"&&!canManageAccess())||(view==="properties"&&!leadership()))return;if(view==="requests"&&!canHandle())return;if(view==="stays"&&!(canHandle()||currentRole()==="accountant"))view="rooms";state.view=view;document.querySelectorAll(".page").forEach(n=>n.classList.toggle("active",n.id===view+"Page"));document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b.dataset.view===view));el("pageTitle").textContent=names[view][0];el("pageDescription").textContent=names[view][1];el("breadcrumb").textContent=names[view][0].toUpperCase();el("serviceForm").hidden=!(view==="services"&&canManage());setSidebarOpen(false);}
+function goto(view){if((view==="management"&&!canManage())||(view==="access"&&!canManageAccess())||(view==="properties"&&!leadership()))return;if(view==="reception"&&!canHandle())return;if(view==="requests"&&!canHandle())return;if(view==="stays"&&!(canHandle()||currentRole()==="accountant"))view="rooms";state.view=view;document.querySelectorAll(".page").forEach(n=>n.classList.toggle("active",n.id===view+"Page"));document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b.dataset.view===view));el("pageTitle").textContent=names[view][0];el("pageDescription").textContent=names[view][1];el("breadcrumb").textContent=names[view][0].toUpperCase();el("serviceForm").hidden=!(view==="services"&&canManage());setSidebarOpen(false);}
 async function fetchFor(table,cols="*"){const q=sb.from(table).select(cols).eq("hotel_id",state.hotelId);const r=await q;if(r.error)throw r.error;return r.data||[];}
 function dateDisplay(v){return v?new Date(v).toLocaleDateString("fr-FR"):"—";}
 function table(headers,rows){if(!rows.length)return '<div class="empty">Aucune donnée à afficher pour cet établissement.</div>';return '<table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join("")+'</tr></thead><tbody>'+rows.join("")+'</tbody></table>';}
@@ -387,6 +388,21 @@ function renderManagement(){
  }).join("");
 }
 
+function renderReceptionToday(){
+ const panel=el("receptionTodayList");
+ if(!panel)return;
+ const current=state.stays.filter(s=>s.hotel_id===state.hotelId&&s.status==="checked_in")
+  .sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||""))).slice(0,40);
+ const rows=current.map(s=>{
+  const room=state.rooms.find(r=>r.id===s.room_id);
+  const action=window.sevenDesktop?.runNativeRfid
+    ?'<button type="button" class="action-button action-primary" data-rfid-prepare="'+esc(s.id)+'">Créer la carte</button>'
+    :'Séjour en cours';
+  return '<tr><td>'+esc(s.guest_name||"Client")+'</td><td>'+esc(room?.number||"—")+
+   '</td><td>'+esc(s.check_out||"—")+'</td><td>'+action+'</td></tr>';
+ });
+ panel.innerHTML=table(["Client","Chambre","Départ prévu","Carte"],rows);
+}
 function renderReceptionOptions(){
  const box=el("receptionCreationPanel");
  if(!box)return;
@@ -419,7 +435,7 @@ function render(){
  el("metricRooms").textContent=state.rooms.length;
  el("metricAvailable").textContent=state.rooms.filter(r=>r.active&&r.operational_status==="available"&&!stayBlocksRoom(r.id,date,tomorrow)).length;
  el("metricServices").textContent=state.services.length;
- renderRequests();renderDirectBookings();renderStays();renderReceptionOptions();renderRooms();renderRoomTypes();renderRoomMedia();
+ renderRequests();renderDirectBookings();renderStays();renderReceptionOptions();renderReceptionToday();renderRooms();renderRoomTypes();renderRoomMedia();
  renderServices();renderAttendance();renderRFID();if(canManageAccess())renderRoles();if(canManage())renderManagement();if(leadership())renderProperties();
 }
 async function rememberDesktopRooms(){
@@ -600,9 +616,17 @@ el("allocationDialog").addEventListener("click",e=>{
 el("availabilityDate").addEventListener("change",renderRooms);
 el("receptionCheckIn").addEventListener("change",renderReceptionOptions);
 el("receptionCheckOut").addEventListener("change",renderReceptionOptions);
+el("receptionStartButton").addEventListener("click",()=>{
+ if(!canHandle())return;
+ goto("reception");
+ el("receptionCreationPanel").scrollIntoView({behavior:"smooth",block:"start"});
+ el("receptionBookingForm").querySelector('input[name="guest_name"]')?.focus();
+});
 el("receptionBookingForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const result=el("receptionBookingResult"),button=el("receptionBookingSubmit");
+ el("receptionNextAction").hidden=true;
+ el("receptionIssueCard").removeAttribute("data-rfid-prepare");
  if(!canHandle()||!navigator.onLine){result.textContent="Accès refusé ou connexion indisponible.";return;}
  const data=new FormData(e.target);
  const check_in=String(data.get("check_in")||""),check_out=String(data.get("check_out")||"");
@@ -624,17 +648,33 @@ el("receptionBookingForm").addEventListener("submit",async e=>{
   if(response.error)throw response.error;
   const booking=Array.isArray(response.data)?response.data[0]:response.data;
   if(!booking?.reservation_id)throw Error("reservation_without_id");
-  let message="Réservation "+(booking.reference||"")+" créée et confirmée.";
+  let message="Client enregistré et chambre réservée"+(booking.reference?" ("+booking.reference+")":"")+".";
+  let arrived=false;
   if(immediate){
    const transition=await sb.rpc("seven_transition_stay",{p_reservation_id:booking.reservation_id,p_action:"check_in"});
    if(transition.error){
     message+=" Le check-in n’a pas été validé : "+readableError(transition.error)+" Réessayez depuis les séjours.";
-   }else message+=" Arrivée du client enregistrée à la réception.";
+   }else {arrived=true;message+=" Arrivée confirmée."; }
   }
   e.target.reset();
+  el("receptionDirectCheckIn").checked=true;
   await loadAll();
   result.textContent=message;
   flash(message);
+  if(arrived){
+   const after=el("receptionNextAction"),card=el("receptionIssueCard");
+   after.hidden=false;
+   el("receptionNextTitle").textContent="Client enregistré, chambre attribuée.";
+   if(window.sevenDesktop?.runNativeRfid){
+    el("receptionNextText").textContent="Vous pouvez préparer sa carte de chambre.";
+    card.hidden=false;
+    card.setAttribute("data-rfid-prepare",String(booking.reservation_id));
+   }else{
+    el("receptionNextText").textContent="Le séjour est actif. La carte de chambre s’émet depuis Seven Gestion Windows.";
+    card.hidden=true;
+   }
+   after.scrollIntoView({block:"nearest",behavior:"smooth"});
+  }
  }catch(error){
   console.error("Reception booking failed",error);
   result.textContent=readableError(error);
