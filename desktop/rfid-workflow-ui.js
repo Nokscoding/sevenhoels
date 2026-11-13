@@ -33,6 +33,9 @@
   +'<p id="sevenRfidHandoffStatus" class="hint" role="status" aria-live="polite"></p>'
   +'</div>';
  page.insertBefore(panel,page.querySelector(".seven-rfid-intro")||page.firstElementChild);
+ // The S18 is not a keyboard emulator; retain this legacy form only in the web edition.
+ const keyboardPanel=page.querySelector(".seven-rfid-intro");
+ if(keyboardPanel)keyboardPanel.hidden=true;
  const get=id=>panel.querySelector("#"+id);
  const status=get("sevenRfidLockStatus"),progress=get("sevenRfidHandoffStatus");
  let context=null,layout=[],loadedKey="",selectedBookingId="";
