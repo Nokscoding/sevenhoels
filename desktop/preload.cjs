@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("sevenDesktop",Object.freeze({
  getRfidStudioStatus:()=>ipcRenderer.invoke("seven:rfid-studio-status"),
  openRfidStudio:()=>ipcRenderer.invoke("seven:rfid-studio-open"),
  openRfidCardLock:()=>ipcRenderer.invoke("seven:rfid-cardlock-open"),
+ getRfidRoomLayout:payload=>ipcRenderer.invoke("seven:rfid-layout-read",payload),
+ saveRfidRoomLayout:payload=>ipcRenderer.invoke("seven:rfid-layout-put",payload),
  getUpdateState:()=>ipcRenderer.invoke("seven:update-state"),
  checkForUpdates:()=>ipcRenderer.invoke("seven:update-check"),
  downloadUpdate:()=>ipcRenderer.invoke("seven:update-download"),
