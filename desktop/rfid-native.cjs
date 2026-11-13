@@ -72,7 +72,7 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
   if(!UUID.test(String(input.hotelId||""))||!UUID.test(String(input.userId||"")))
    return {ok:false,message:"Hôtel ou utilisateur invalide."};
   if(input.operation!=="read"&&(input.operation==="issue"&&!UUID.test(String(input.roomId||""))||input.confirmAuthorization!==true))
-   return {ok:false,message:"Chambre et confirmation de badge de test obligatoires."};
+   return {ok:false,message:"Sélectionnez une chambre et confirmez l’opération avant de continuer."};
   if(input.operation==="issue"){
    if(!DATE.test(input.expiresAt)||!Number.isInteger(input.cardNo)||input.cardNo<0||input.cardNo>15||
     !Number.isInteger(input.dai)||input.dai<0||input.dai>255)
