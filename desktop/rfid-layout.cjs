@@ -27,11 +27,36 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
      throw Error("Configuration RFID incompatible.");
    return data;
   }catch(error){
-   if(error?.code==="ENOENT")return {version:1,entries:{}};
+   if(error?.code==="ENOENT")return {version:1,entries:{},vendorIds:{}};
    throw error;
   }
  }
  const key=(userId,hotelId)=>cleanId(userId)+":"+cleanId(hotelId);
+ async function commit(data) {
+  const content=JSON.stringify(data);
+  if(content.length>220000)throw Error("Configuration RFID trop volumineuse.");
+  const encrypted=await safeStorage.encryptStringAsync(content);
+  await files.mkdir(path.dirname(location),{recursive:true});
+  const temp=location+".tmp";
+  await files.writeFile(temp,encrypted,{mode:0o600});
+  await files.rename(temp,location);
+ }
+ async function getVendorId({userId,hotelId}) {
+  const data=await readAll();return data.vendorIds?.[key(userId,hotelId)]||null;
+ }
+ async function setVendorId({userId,hotelId,vendorHotelId}) {
+  const id=Number(vendorHotelId);
+  if(!Number.isSafeInteger(id)||id<=0||id>2147483647)throw Error("Identifiant fabricant invalide.");
+  const k=key(userId,hotelId);
+  const execute=async()=>{
+   const data=await readAll();
+   if(!data.vendorIds)data.vendorIds={};
+   data.vendorIds[k]=id;
+   await commit(data);
+   return id;
+  };
+  const op=writes.then(execute,execute);writes=op.catch(()=>{});return op;
+ }
  async function get({userId,hotelId}){
   const data=await readAll();
   const rows=data.entries[key(userId,hotelId)]||{};
@@ -52,19 +77,13 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
    if(Object.keys(rows).length>=800&&!rows[record.roomId])throw Error("Limite de 800 chambres RFID par établissement.");
    rows[record.roomId]={building:record.building,floor:record.floor,lockNo:record.lockNo};
    data.entries[k]=rows;
-   const content=JSON.stringify(data);
-   if(content.length>220000)throw Error("Configuration RFID trop volumineuse.");
-   const encrypted=await safeStorage.encryptStringAsync(content);
-   await files.mkdir(path.dirname(location),{recursive:true});
-   const temp=location+".tmp";
-   await files.writeFile(temp,encrypted,{mode:0o600});
-   await files.rename(temp,location);
+   await commit(data);
    return record;
   };
   const operation=writes.then(execute,execute);
   writes=operation.catch(()=>{});
   return operation;
  }
- return {get,put};
+ return {get,put,getVendorId,setVendorId};
 }
 module.exports={createRfidLayoutStore};
