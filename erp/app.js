@@ -193,6 +193,9 @@ function renderStays(){
    }
    if(s.status==="checked_in"){
     buttons.push('<button type="button" class="action-button action-primary" data-stay="'+esc(s.id)+'" data-action="check_out">Check-out</button>');
+     if(window.sevenDesktop?.openRfidStudio){
+      buttons.push('<button type="button" class="action-button" data-rfid-prepare="'+esc(s.id)+'">Préparer la carte</button>');
+     }
    }
    if(["confirmed","pending"].includes(s.status)){
     buttons.push('<button type="button" class="action-button action-danger" data-stay="'+esc(s.id)+'" data-action="cancel">Annuler</button>');
@@ -296,6 +299,18 @@ async function refreshHotelRoster(selectId){
  renderProperties();
 }
 
+// Read-only, non-secret reservation context for the Windows RFID handoff.
+// Actual card programming remains inside the proven Studio 2.2.
+window.SevenRfidContext=()=>{
+ if(!state.user||!state.hotelId||!canHandle())return null;
+ return {
+  userId:state.user.id,hotelId:state.hotelId,hotelName:currentHotel()?.name||"",
+  role:currentRole(),
+  rooms:state.rooms.filter(r=>r.hotel_id===state.hotelId).map(r=>({id:r.id,number:r.number,floor:r.floor||""})),
+  stays:state.stays.filter(s=>s.hotel_id===state.hotelId&&s.status==="checked_in")
+   .map(s=>({id:s.id,hotel_id:s.hotel_id,room_id:s.room_id,reference:s.reference,check_in:s.check_in,check_out:s.check_out,status:s.status}))
+ };
+};
 function renderRFID(){
  const select=el("rfidStaySelect"),previous=select.value;
  const checked=state.stays.filter(s=>s.status==="checked_in"&&s.hotel_id===state.hotelId);
@@ -429,6 +444,7 @@ async function loadAll(){
    state.allRoles=r.data||[];
   }
   render();
+  if(window.sevenDesktop)window.dispatchEvent(new Event("seven:rfid-context"));
   if(window.sevenDesktop)rememberDesktopRooms();
  }catch(e){
   console.error(e);flash(navigator.onLine?"Certaines données sont indisponibles. Vérifiez vos accès ou réessayez.":"Connexion indisponible : seules les données synchronisées peuvent être consultées.");
