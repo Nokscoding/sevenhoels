@@ -11,3 +11,20 @@
 #roomPresentationPanel input[type=file],#roomCreationPanel input[type=file]{padding:12px;border:1px dashed #b5c5ca;border-radius:10px;background:#f6f9fa;width:100%}
 #selectedBookingsTable .contact-actions{white-space:nowrap}
 @media(max-width:750px){.seven-incoming-bookings{padding:10px 0 22px}.seven-room-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Seven réception — entrée directe et prise en charge au comptoir. */
+.seven-reception-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;border-radius:18px;padding:28px 30px;margin-bottom:17px;background:linear-gradient(115deg,#152e36,#25464c);color:#fff}
+.seven-reception-hero .overline{color:#a7dad4}
+.seven-reception-hero h2{color:#fff;margin:5px 0 10px;font-size:clamp(23px,2vw,30px);letter-spacing:-.025em}
+.seven-reception-hero p{color:#e0eeec;max-width:630px;margin:0;line-height:1.6}
+.seven-reception-hero .primary{min-height:46px;white-space:nowrap}
+.seven-reception-steps{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px}
+.seven-reception-steps span{display:inline-flex;align-items:center;gap:9px;padding:10px 13px;border:1px solid #dce5e1;border-radius:10px;background:#fff;color:#35515a;font-weight:650;font-size:12px}
+.seven-reception-steps b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#e0f1eb;color:#1c665c;font-size:11px}
+.seven-reception-shortcut{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 18px;margin:0 0 18px;background:#eef6f3;border:1px solid #d5e6e0;border-radius:12px}
+.seven-reception-shortcut div{display:flex;flex-direction:column;gap:3px}.seven-reception-shortcut strong{font-weight:750;color:#194840}.seven-reception-shortcut span{font-size:12px;color:#456c65}
+.seven-reception-next{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid #b9dccc;background:#f1f9f5;margin:15px 0}
+.seven-reception-next strong{color:#195e47}.seven-reception-next p{margin:6px 0 0;color:#47685e}
+.seven-reception-today{margin-top:16px}
+.seven-reception-nav{font-weight:750}
+@media(max-width:680px){.seven-reception-hero{flex-direction:column;align-items:stretch;padding:22px 19px}.seven-reception-hero .primary,.seven-reception-shortcut .primary{width:100%}.seven-reception-steps{gap:7px}.seven-reception-steps span{flex:1 1 auto}.seven-reception-next{align-items:stretch}.seven-reception-next .inline-actions{width:100%}}

@@ -35,7 +35,7 @@ function mock(){
 test("physical issue uses configured hotel + lock, never an untrusted lock from renderer",async()=>{
  const t=mock();
  const r=await t.ctrl.execute({operation:"issue",userId,hotelId,roomId,
-  lockNo:"BADBAD",port:"Port1",expiresAt:"2026-11-14T12:00",cardNo:1,dai:1,confirmTest:true});
+  lockNo:"BADBAD",port:"Port1",expiresAt:"2026-11-14T12:00",cardNo:1,dai:1,confirmAuthorization:true});
  assert.equal(r.ok,true,JSON.stringify({result:r,calls:t.calls}));
  assert.equal(r.verified,true);
  assert.equal(t.calls.length,1);
@@ -46,10 +46,10 @@ test("physical issue uses configured hotel + lock, never an untrusted lock from 
 });
 test("mutations require test consent and configured valid dates",async()=>{
  const t=mock();
- const noConsent=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmTest:false});
+ const noConsent=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmAuthorization:false});
  assert.equal(noConsent.ok,false);
  const invalid=await t.ctrl.execute({operation:"issue",userId,hotelId,roomId,
-  confirmTest:true,expiresAt:"tomorrow",cardNo:0,dai:1});
+  confirmAuthorization:true,expiresAt:"tomorrow",cardNo:0,dai:1});
  assert.equal(invalid.ok,false);
  assert.equal(t.calls.length,0);
 });
@@ -64,7 +64,7 @@ test("unconfigured CardLock service blocks writing without invoking the SDK",asy
  const t=mock();
  t.studio.status=async()=>({servicePort:null});
  t.studio.openCardLock=async()=>({ok:false,cancelled:true});
- const response=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmTest:true});
+ const response=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmAuthorization:true});
  assert.equal(response.ok,false);
  assert.equal(t.calls.length,0);
 });

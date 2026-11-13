@@ -31,3 +31,13 @@
 .seven-rfid-native-result[data-result=error]{background:#fff3f0;border-color:#e8c9c0;color:#8d392b}
 .seven-rfid-native-result[data-result=warning]{background:#fff9e9;border-color:#e5d7b3;color:#72551d}
 .seven-rfid-native-result[data-result=pending]{background:#ecf4fa}
+
+/* Réception — émission de cartes sans réglages techniques au premier plan. */
+.seven-rfid-guest-fields{display:grid;grid-template-columns:minmax(200px,440px);gap:12px;margin:14px 0}
+.seven-rfid-guest-fields label{display:grid;gap:7px;font-size:13px;font-weight:700;color:#2a5056}
+.seven-rfid-guest-fields input{width:100%;min-height:46px;border-radius:9px;border:1px solid #cedcdd;padding:10px;background:white;color:#1e3b42}
+.seven-rfid-advanced{margin:10px 0 13px;border:1px solid #e0e8e7;border-radius:9px;background:#fcfdfc;padding:11px 13px}
+.seven-rfid-advanced summary{cursor:pointer;font-weight:650;color:#46656c;font-size:12px}
+.seven-rfid-advanced .seven-rfid-workflow-grid{margin-top:12px}
+#sevenRfidIssue{font-weight:750}
+@media(max-width:600px){.seven-rfid-guest-fields{grid-template-columns:1fr}}

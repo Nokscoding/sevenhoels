@@ -104,7 +104,7 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Installer absent" }
           if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
           if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
-          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Version 0.2.8 — encodage RFID directement dans Seven Gestion Windows : lecture, écriture et effacement de cartes tests via le SDK P50 x86 avec CardLock ouvert. Configuration hôtel/bâtiment/étage/chambre/serrure, relecture de contrôle et enregistrement du badge validé sur le séjour. Le moteur Seven RFID Studio 2.2 reste préservé comme secours. Validation physique sur lecteur S18 et serrure de test impérative."
+          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Seven Gestion 1.0 : accueil des clients sur place, attribution des chambres, enregistrement des arrivées et création de cartes de chambre directement dans Seven. Gestion des bâtiments, étages et serrures. La création d’une carte exige une confirmation et une vérification après écriture. CardLock doit rester ouvert en arrière-plan pour le lecteur S18."
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
         if: always()

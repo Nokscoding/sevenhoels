@@ -1,8 +1,8 @@
 {
   "name": "seven-gestion-desktop",
-  "version": "0.2.8",
+  "version": "1.0.0",
   "private": true,
-  "description": "Seven Hotels & Apartments — Gestion Windows",
+  "description": "Seven Gestion — application complète de réception et de gestion hôtelière",
   "main": "main.cjs",
   "author": "Seven Hotels & Apartments",
   "license": "UNLICENSED",

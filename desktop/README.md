@@ -99,3 +99,11 @@ L'hôtel configure l'identifiant fabricant, puis associe bâtiment, étage, cham
 Cette nouvelle intégration n'a pas encore été testée physiquement sur le lecteur S18 ; **les mutations sont limitées aux badges de test et serrures de test isolées** tant que la validation n'est pas réalisée. La révocation informatique n'invalide pas un badge accepté par une serrure hors ligne ; l'effacement physique est séparé. L'interface historique et les DLL de Seven RFID Studio 2.2 ne sont ni modifiées ni supprimées, pour permettre un retour à la version validée.
 
 Tests : `npm run check && npm test && npm run test:layout` sur Windows. La compilation du nouveau moteur x86 et l'intégration physique doivent être vérifiées dans GitHub Actions et sur un vrai poste S18.
+
+## Seven Gestion 1.0 — accueil et cartes intégrés
+
+L'écran principal du réceptionniste est **Accueil / Réception**. Il affiche un bouton **Nouveau client sur place**, un formulaire de saisie, la liste des chambres libres, les dates, le nombre d'occupants et la confirmation de l'arrivée. Après enregistrement d'un client arrivé, Seven offre immédiatement le bouton **Créer la carte du client**. Les clients présents figurent également dans un tableau pour retrouver leurs séjours.
+
+Le module **Cartes de chambre** est intégré à la fenêtre Windows et ne lance pas Seven RFID Studio. Il permet lecture, création et effacement des cartes clients, avec confirmation, vérification par le SDK et association au séjour. Les réglages techniques sont masqués aux réceptionnistes et réservés à la configuration. Les correspondances entre chambres et serrures et le numéro fabricant restent chiffrés et locaux au poste Windows. Le lecteur S18 continue à nécessiter **CardLock ouvert en arrière-plan**. L'ancien Studio 2.2 et ses DLL restent préservés pour la maintenance.
+
+Ce logiciel est livré avec vérification automatisée de ses composants et installateur Windows. La certification physique de tous les modèles de serrures ne peut pas être effectuée depuis un environnement cloud ; ne pas déclarer une carte utilisable sans relecture confirmée.
