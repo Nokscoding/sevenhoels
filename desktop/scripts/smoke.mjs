@@ -15,6 +15,8 @@ const offline=await read("desktop/offline.js");
 const build=await read("desktop/scripts/build.mjs");
 const main=await read("desktop/main.cjs");
 const preload=await read("desktop/preload.cjs");
+const rfidReader=await read("erp/rfid-reader.js");
+assert.doesNotThrow(()=>new Function(rfidReader),"Diagnostic RFID doit être syntaxiquement valide");
 
 for(const [name,src] of [["ERP",app],["Notifications",notices],["Mode local",offline],["Processus Windows",main],["Pont IPC",preload]]){
  assert.doesNotThrow(()=>new Function(src),name+" doit être syntaxiquement valide");
@@ -53,13 +55,15 @@ for(const key of ["seven_media","decideDirectBooking","uploadRoomPhotos","data-t
  assert.ok(app.includes(key),"Missing room and booking behavior: "+key);
 }
 assert.ok(build.includes("inventory.css"),"Windows build must copy the new hotel photo gallery stylesheet");
-for(const id of ["rfidScanForm","rfidReaderFocus","rfidScanInput","rfidScanMode","rfidScanResult","rfidStaySelect","rfidTable"]){
+for(const id of ["rfidScanForm","rfidReaderFocus","rfidScanInput","rfidScanMode","rfidScanResult","rfidStaySelect","rfidTable","rfidReaderTest","rfidReaderTestResult"]){
  assert.ok(html.includes('id="'+id+'"'),"RFID reception input missing: "+id);
 }
 for(const f of ["seven_rfid_issue","seven_rfid_verify","seven_rfid_revoke","rfidScanForm"]){
  assert.ok(app.includes(f),"RFID RPC or event missing: "+f);
 }
 assert.ok(build.includes('"rfid.css"'),"RFID reception stylesheet not included in Electron build");
+assert.ok(build.includes('"rfid-reader.js"'),"RFID diagnostic script missing from Electron build");
+assert.ok(html.includes('<script src="./rfid-reader.js" defer></script>'),"Diagnostic RFID not loaded");
 
 assert.ok(build.includes("SEVEN_ADMIN_SOURCE_DIR"),"Source du portail admin séparé absente");
 const updateController=await read("desktop/updates.cjs");
