@@ -23,6 +23,8 @@ for(const filename of ["index.html","app.js","notifications.js","config.js","sty
 }
 await fs.cp(path.join(source,"assets"),path.join(dist,"assets"),{recursive:true});
 await fs.copyFile(path.join(desktop,"rfid-studio-ui.js"),path.join(dist,"rfid-studio-ui.js"));
+await fs.copyFile(path.join(desktop,"rfid-workflow-ui.js"),path.join(dist,"rfid-workflow-ui.js"));
+await fs.copyFile(path.join(desktop,"rfid-workflow.css"),path.join(dist,"rfid-workflow.css"));
 await fs.copyFile(path.join(desktop,"offline.js"),path.join(dist,"offline.js"));
 await fs.copyFile(path.join(desktop,"offline.css"),path.join(dist,"offline.css"));
 await fs.copyFile(path.join(desktop,"update-ui.js"),path.join(dist,"update-ui.js"));
@@ -33,9 +35,9 @@ const cdn='<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.
 if(!html.includes(cdn))throw Error("Supabase CDN tag not found; update the desktop build script");
 html=html.replace(cdn,'<script src="./vendor/supabase.js" defer></script>');
 html=html.replace('<script src="./app.js" defer></script>',
- '<script src="./offline.js" defer></script><script src="./update-ui.js" defer></script><script src="./rfid-studio-ui.js" defer></script><script src="./app.js" defer></script>');
+ '<script src="./offline.js" defer></script><script src="./update-ui.js" defer></script><script src="./rfid-studio-ui.js" defer></script><script src="./app.js" defer></script><script src="./rfid-workflow-ui.js" defer></script>');
 html=html.replace('<link rel="stylesheet" href="./management.css">',
- '<link rel="stylesheet" href="./management.css"><link rel="stylesheet" href="./offline.css"><link rel="stylesheet" href="./update-ui.css">');
+ '<link rel="stylesheet" href="./management.css"><link rel="stylesheet" href="./offline.css"><link rel="stylesheet" href="./update-ui.css"><link rel="stylesheet" href="./rfid-workflow.css">');
 const csp=[
  "default-src 'self'",
  "script-src 'self'",
