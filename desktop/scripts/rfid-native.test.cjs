@@ -12,6 +12,10 @@ function mock(){
  const studio={status:async()=>({servicePort:10086}),openCardLock:async()=>({ok:true})};
  const layout={getVendorId:async()=>48231,get:async()=>[{roomId,lockNo:"01020A"}]};
  const files={stat:async()=>({isFile:()=>true})};
+ const manufacturer71={
+  ensureRunning:async()=>({ok:true,running:true}),
+  state:async()=>({ok:true,running:true,path:"D:\\working-cardlock-71\\CardLock.exe"})
+ };
  const spawnProcess=(file,args,opts)=>{
   const child=new EventEmitter();child.stdout=new PassThrough();child.kill=()=>{};
   child.stdin=new PassThrough();child.stdin.on("data",data=>{
@@ -28,9 +32,9 @@ function mock(){
  };
  return {
   calls,studio,layout,
-  manufacturer71:{ensureRunning:async()=>({ok:true,running:true})},
+  manufacturer71,
   ctrl:createRfidNativeController({app:{isPackaged:true},studio,layout,
-   manufacturer71:{ensureRunning:async()=>({ok:true,running:true})},files,
+   manufacturer71,files,
    platform:"win32",resourcesPath:"C:\\Seven\\resources",spawnProcess})
  };
 }
@@ -104,6 +108,7 @@ test("Seven 71 RF57 can issue, erase and read through the manufacturer API after
  assert.equal(t.calls[0].payload.operation,"issue");
  assert.equal(t.calls[0].payload.readerFamily,"rf57");
  assert.equal(t.calls[0].payload.cardType,"57");
+ assert.equal(t.calls[0].payload.vendorDirectory,"D:\\working-cardlock-71");
  assert.equal(t.calls[0].payload.hotelId,48231);
  assert.equal(t.calls[0].payload.lockNo,"01020A");
  assert.equal(t.calls[1].payload.operation,"erase");
@@ -167,4 +172,23 @@ test("Seven 47 does not issue cards while proUSB V9.27C of Seven 71 is open",asy
  const response=await controller.execute({operation:"read",userId,hotelId});
  assert.equal(response.ok,false);
  assert.match(response.message,/71/);
+});
+
+test("Seven 71 refuses OEM operations when the actual running vendor DLL directory cannot be verified",async()=>{
+ const t=mock();
+ t.layout.getReaderProfile=async()=>({
+  driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"
+ });
+ t.manufacturer71.state=async()=>({ok:false,running:false,
+  message:"Le CardLock ouvert est différent de celui du Seven 71."});
+ const denied=await t.ctrl.execute({operation:"read",userId,hotelId});
+ assert.equal(denied.ok,false);
+ assert.equal(t.calls.length,0,"never invoke a guessed OEM DLL");
+});
+test("Seven 47 remains on the original P50 SDK path, without a vendor DLL override",async()=>{
+ const t=mock();
+ const result=await t.ctrl.execute({operation:"read",userId,hotelId});
+ assert.equal(result.ok,true);
+ assert.equal(t.calls[0].payload.readerFamily,"p50");
+ assert.equal(t.calls[0].payload.vendorDirectory,"");
 });
