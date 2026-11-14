@@ -138,15 +138,19 @@ async function run(){
   assert.equal(unknown.details.includes("Marie Exemple"),false,"Unknown cards cannot show the prior guest");
 
 
-  // Switching hotels must never expose the P50 write/erase buttons for Seven 71.
+  // Seven 71 offers read, issue and erase using a separately configured RF57 profile.
   const differentEncoder=await win.webContents.executeJavaScript(
    '(async function(){'+
-   'const hotel="e5555555-5555-4555-8555-555555555555",room="f6666666-6666-4666-8666-666666666666";'+
+   'const hotel="e5555555-5555-4555-8555-555555555555",room="f6666666-6666-4666-8666-666666666666",stay="a7777777-7777-4777-8777-777777777777";'+
    'window.SevenRfidContext=()=>({userId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",hotelId:hotel,hotelName:"Seven 71",role:"manager",'+
-     'rooms:[{id:room,hotel_id:hotel,number:"201",floor:"2"}],stays:[]});'+
+     'rooms:[{id:room,hotel_id:hotel,number:"201",floor:"2"}],'+
+     'stays:[{id:stay,hotel_id:hotel,room_id:room,status:"checked_in",reference:"71-TEST",check_in:"2026-11-14",check_out:"2026-11-15"}]});'+
+   'window.sevenDesktop.getRfidRoomLayout=async()=>[{roomId:room,building:"Seven 71",floor:"2",lockNo:"01020A"}];'+
    'window.sevenDesktop.getRfidReaderProfile=async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});'+
    'window.dispatchEvent(new Event("seven:rfid-context"));'+
    'await new Promise(resolve=>setTimeout(resolve,140));'+
+   'const staySelect=document.getElementById("sevenRfidBooking");staySelect.value=stay;staySelect.dispatchEvent(new Event("change"));'+
+   'const consent=document.getElementById("sevenRfidConfirmTest");consent.checked=true;consent.dispatchEvent(new Event("change"));'+
    'return {title:document.getElementById("sevenRfidReaderTitle").textContent,'+
     'encoder:document.getElementById("sevenRfidEncoderNo").value,'+
     'cardType:document.getElementById("sevenRfidCardType").value,'+
@@ -158,10 +162,10 @@ async function run(){
   assert.ok(differentEncoder.title.includes("71"),"Seven 71 must have its own reader profile");
   assert.equal(differentEncoder.encoder,"2922","Seven 71 encoder metadata must remain distinct");
   assert.equal(differentEncoder.cardType,"57","Seven 71 card family must remain distinct");
-  assert.equal(differentEncoder.issueDisabled,true,"Different card technology must not be written by Seven 47 SDK");
-  assert.equal(differentEncoder.eraseDisabled,true,"Different card technology must not be erased by Seven 47 SDK");
+  assert.equal(differentEncoder.issueDisabled,false,"Configured RF57 must show the direct create-card action");
+  assert.equal(differentEncoder.eraseDisabled,false,"Configured RF57 must show the direct erase-card action");
   assert.equal(differentEncoder.readEnabled,true,"A read-only diagnostic must be available");
-  assert.ok(differentEncoder.warning.includes("compatibilité"),"Missing warning about unverified SDK compatibility");
+  assert.ok(differentEncoder.warning.includes("RF57"),"The Seven 71 interface must display the RF57 card family");
   console.log("Seven 71 independent reader profile validated.");
 
   // Mount the real production updater UI with a safe fake read-only bridge.
