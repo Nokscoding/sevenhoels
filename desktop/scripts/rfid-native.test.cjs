@@ -314,3 +314,68 @@ test("Seven 71 RF57 card type is derived from the Delphi SDK 25th character, wit
  assert.match(bridge,/ReaderCard verify=Read\("verify",family=="rf57"\)/);
  assert.match(bridge,/if\(family=="rf57"&&operation=="issue"&&before\.Type!="F"\)/);
 });
+
+test("RF57 diagnostic identifies type branch after split stderr chunks, without exposing card data",async()=>{
+ const studio={status:async()=>({servicePort:10086}),openCardLock:async()=>({ok:true})};
+ const layout={getVendorId:async()=>48231,get:async()=>[],
+  getReaderProfile:async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"})};
+ const spawnProcess=()=>{
+  const child=new EventEmitter();
+  child.stdout=new PassThrough();
+  child.stderr=new PassThrough();
+  child.kill=()=>{};
+  child.stdin=new PassThrough();
+  child.stdin.on("data",()=>queueMicrotask(()=>{
+   child.stderr.emit("data",Buffer.from("SEVEN_STA"));
+   child.stderr.emit("data",Buffer.from("GE:type71\n"));
+   child.emit("close",0,null);
+  }));
+  return child;
+ };
+ const ctrl=createRfidNativeController({app:{isPackaged:true},studio,layout,
+  manufacturer71:{ensureRunning:async()=>({ok:true,running:true}),
+   state:async()=>({ok:true,running:true,path:"D:\\Seven71\\CardLock.exe"})},
+  files:{stat:async()=>({isFile:()=>true})},platform:"win32",
+  resourcesPath:"C:\\Seven\\resources",spawnProcess});
+ const result=await ctrl.execute({operation:"read",userId,hotelId});
+ assert.equal(result.ok,false);
+ assert.equal(result.stage,"type71");
+ assert.match(result.message,/Identification du type RF57/);
+ assert.match(result.message,/Moteur Seven 1\.0\.12/);
+ assert.doesNotMatch(result.message,/48231|Seven71\\CardLock/);
+});
+test("RF57 bridge accepts complete JSON even when OEM writes non-JSON stdout",async()=>{
+ const studio={status:async()=>({servicePort:10086}),openCardLock:async()=>({ok:true})};
+ const layout={getVendorId:async()=>48231,get:async()=>[],
+  getReaderProfile:async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"})};
+ const spawnProcess=()=>{
+  const child=new EventEmitter();
+  child.stdout=new PassThrough();
+  child.stderr=new PassThrough();
+  child.kill=()=>{};
+  child.stdin=new PassThrough();
+  child.stdin.on("data",()=>queueMicrotask(()=>{
+   child.stdout.emit("data",Buffer.from('OEM log line\n{"ok":true,"code":0,"type":"6","sequence":"1234ABCD","bridgeBuild":"rf57-trace-1.0.12","message":"Badge reconnu."}\nOEM closed\n'));
+   child.emit("close",0,null);
+  }));
+  return child;
+ };
+ const ctrl=createRfidNativeController({app:{isPackaged:true},studio,layout,
+  manufacturer71:{ensureRunning:async()=>({ok:true,running:true}),
+   state:async()=>({ok:true,running:true,path:"D:\\Seven71\\CardLock.exe"})},
+  files:{stat:async()=>({isFile:()=>true})},platform:"win32",
+  resourcesPath:"C:\\Seven\\resources",spawnProcess});
+ const result=await ctrl.execute({operation:"read",userId,hotelId});
+ assert.equal(result.ok,true);
+ assert.equal(result.type,"6");
+ assert.equal(result.bridgeBuild,"rf57-trace-1.0.12");
+});
+test("OEM RF57 branch marks before and after type extraction, not GetCardType",()=>{
+ const fs=require("node:fs");
+ const path=require("node:path");
+ const bridge=fs.readFileSync(path.join(__dirname,"..","rfid-studio","source","SevenRfidBridge.cs"),"utf8");
+ assert.match(bridge,/Mark\("type71"\);[\s\S]*?c\.Data\[24\][\s\S]*?Mark\("typeok"\)/);
+ assert.match(bridge,/Mark\("readok"\)/);
+ assert.match(bridge,/Mark\("infook"\)/);
+ assert.match(bridge,/Mark\("emitted"\)/);
+});
