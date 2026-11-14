@@ -7,7 +7,7 @@ const userId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const hotelId="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const correct="D:\\LockV9.27C\\CardLock.Exe";
 const wrong="C:\\Hotel47\\CardLock.exe";
-function setup({installed=correct,running=[],discover=true,selection=null,platform="win32"}={}){
+function setup({installed=correct,running=[],discover=true,selection=null,platform="win32",otherValid=[]}={}){
  const launches=[],saved=[],dialogs=[];
  const layout={
   getVendorProgram:async()=>installed,
@@ -15,7 +15,7 @@ function setup({installed=correct,running=[],discover=true,selection=null,platfo
   getReaderProfile:async()=>({driver:"pro-usb-v9"})
  };
  const verifyInstallation=async file=>(
-  file.toLowerCase()===correct.toLowerCase() && discover?
+  (file.toLowerCase()===correct.toLowerCase() && discover||otherValid.some(p=>p.toLowerCase()===file.toLowerCase()))?
    {ok:true,path:file}:{ok:false,message:"Logiciel V9.27C non reconnu."});
  const launcher=createProUsb71Launcher({
   app:{getPath:()=>"/mock"},layout,platform,installPaths:discover?[correct]:[],
@@ -115,4 +115,47 @@ test("explicit selection rejects a wrong executable and an incompatible running 
  assert.equal(blocked.ok,false);
  assert.match(blocked.message,/autre CardLock/);
  assert.equal(conflict.saved.length,0);
+});
+
+const validCopy="C:\\Seven 71 Backup\\CardLock.exe";
+test("an active, valid proUSB copy reports relink instead of blaming another hotel",async()=>{
+ const t=setup({installed:correct,running:[validCopy],otherValid:[validCopy]});
+ const state=await t.launcher.state({userId,hotelId});
+ assert.equal(state.ok,false);
+ assert.equal(state.relinkRequired,true);
+ assert.equal(state.conflict,undefined);
+ assert.match(state.message,/CardLock ouvert/);
+ const before=await t.launcher.ensureRunning({userId,hotelId});
+ assert.equal(before.ok,false);
+ assert.equal(before.relinkRequired,true);
+ assert.equal(t.saved.length,0);
+});
+test("relink active CardLock only after user confirmation and manufacturer verification",async()=>{
+ const t=setup({installed:correct,running:[validCopy],otherValid:[validCopy]});
+ const denied=await t.launcher.associateRunning({userId,hotelId});
+ assert.equal(denied.ok,false);
+ assert.equal(t.saved.length,0);
+ const linked=await t.launcher.associateRunning({userId,hotelId,confirmWorkingInstallation:true});
+ assert.equal(linked.ok,true);
+ assert.equal(linked.path,validCopy);
+ assert.equal(t.saved.length,1);
+ assert.equal(t.saved[0].programPath,validCopy);
+ assert.equal(t.launches.length,0);
+});
+test("relink refuses multiple CardLock paths, wrong SDK or no running program",async()=>{
+ const multi=setup({running:[validCopy,correct],otherValid:[validCopy]});
+ assert.equal((await multi.launcher.associateRunning({userId,hotelId,confirmWorkingInstallation:true})).ok,false);
+ assert.equal(multi.saved.length,0);
+ const wrongProgram=setup({running:[wrong]});
+ assert.equal((await wrongProgram.launcher.associateRunning({userId,hotelId,confirmWorkingInstallation:true})).ok,false);
+ assert.equal(wrongProgram.saved.length,0);
+ const stopped=setup({running:[]});
+ assert.equal((await stopped.launcher.associateRunning({userId,hotelId,confirmWorkingInstallation:true})).ok,false);
+});
+test("explicit selection does not accept an unrelated running CardLock even if valid copy exists",async()=>{
+ const t=setup({installed:correct,selection:correct,running:[validCopy],otherValid:[validCopy]});
+ const selected=await t.launcher.choose({userId,hotelId});
+ assert.equal(selected.ok,false);
+ assert.match(selected.message,/chemin exact/);
+ assert.equal(t.saved.length,0);
 });
