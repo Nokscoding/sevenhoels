@@ -21,6 +21,9 @@ internal static class Vendor {
  public static extern void CloseUSB(byte p);
  [DllImport("proRFL.dll",EntryPoint="ReadCard",CallingConvention=CallingConvention.StdCall)]
  public static extern int ReadCard(byte p,[Out]byte[] data);
+ // Same optional hardware buzzer already exposed by the validated Studio 2.2.
+ [DllImport("proRFL.dll",EntryPoint="Buzzer",CallingConvention=CallingConvention.StdCall)]
+ public static extern int Buzzer(byte p,byte duration10ms);
  [DllImport("proRFL.dll",EntryPoint="GetCardTypeByCardDataStr",CallingConvention=CallingConvention.StdCall)]
  public static extern int GetCardType([MarshalAs(UnmanagedType.LPStr)]string data,[Out]byte[] type);
  [DllImport("proRFL.dll",EntryPoint="GetGuestLockNoByCardDataStr",CallingConvention=CallingConvention.StdCall)]
@@ -108,11 +111,19 @@ internal static class Bridge {
   return lr==0&&er==0&&Normalize(Decode(lockNumber))==Normalize(lockNo)
       &&Decode(expiryOut).Trim()==expiry;
  }
+ // A failed or unsupported hardware buzzer must never cancel a card operation.
+ static void SoundReader(byte duration10ms) {
+  try { Vendor.Buzzer(1,duration10ms); }
+  catch (EntryPointNotFoundException) {}
+  catch (DllNotFoundException) {}
+  catch (SEHException) {}
+  catch (Exception) {}
+ }
  static Dictionary<string,object> Perform(Dictionary<string,object> request) {
   string operation=Str(request,"operation");
   string port=Str(request,"port");
   if(port!="Port1"&&port!="Port2")return Error("Port SDK inconnu.");
-  if(operation!="read"&&operation!="issue"&&operation!="erase")return Error("Opération inconnue.");
+  if(operation!="read"&&operation!="issue"&&operation!="erase"&&operation!="connect")return Error("Opération inconnue.");
   int hotel=Num(request,"hotelId");
   if((operation=="issue"||operation=="erase")&&(hotel<=0||!Flag(request,"confirmAuthorization")))
    return Error("Numéro de l’hôtel et confirmation de l’opération requis.");
@@ -127,8 +138,17 @@ internal static class Bridge {
   int connected=Vendor.InitializeUSB(1);
   if(connected!=0)return Error("Initialisation S18 refusée par SDK : "+connected,connected);
   try {
+   // This checks the real USB reader, not just whether CardLock has started.
+   if(operation=="connect"){
+    if(Flag(request,"signal"))SoundReader(22);
+    return new Dictionary<string,object>{{"ok",true},{"code",0},
+     {"message","Lecteur S18 connecté."}};
+   }
    ReaderCard before=Read();
-   if(operation=="read")return Info(before,hotel);
+   if(operation=="read"){
+    if(before.Valid)SoundReader(18);
+    return Info(before,hotel);
+   }
    if(!before.Valid)return Error("Carte non reconnue : impossible de modifier le badge.");
    if(operation=="erase"&&before.Type!="6")return Error("Seules les cartes de chambre client peuvent être effacées.");
    if(operation=="issue"&&before.Type!="F"&&before.Type!="6")
@@ -163,6 +183,7 @@ internal static class Bridge {
    Thread.Sleep(300);
    ReaderCard verify=Read();
    bool verified=VerifiedGuest(verify,hotel,lockNo,expiry);
+   if(verified)SoundReader(42);
    return new Dictionary<string,object>{{"ok",verified},{"code",issued},{"verified",verified},
     {"type",verify.Type},{"sequence",verify.Sequence},{"message",verified
        ?"Carte client créée ; chambre et date de fin vérifiées."
