@@ -113,7 +113,7 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   const file=String(programPath||"").trim();
   if(file.length<12||file.length>1024||/[\u0000-\u001f]/.test(file))
    throw Error("Chemin du logiciel fabricant invalide.");
-  if(!/^[a-z]:\\\\/i.test(file)||!file.toLowerCase().endsWith("\\\\cardlock.exe"))
+  if(!/^[a-z]:\\/i.test(file)||!file.toLowerCase().endsWith("\\cardlock.exe"))
    throw Error("Choisissez l'exécutable CardLock.Exe de proUSB V9.27C.");
   const k=key(userId,hotelId);
   const execute=async()=>{
