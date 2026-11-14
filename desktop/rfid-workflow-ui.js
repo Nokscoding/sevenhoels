@@ -14,12 +14,23 @@
   +'<h2>Créer et gérer les cartes des clients</h2>'
   +'<p class="message-note">Remettez la carte d’accès au client après son arrivée. Toutes les opérations se font ici, sans ouvrir un autre écran.</p></div></div>'
   +'<div class="seven-rfid-inline-status" id="sevenRfidDeviceStatus" role="status">Vérification du lecteur…</div>'
+  +'<section class="seven-rfid-reader-profile" id="sevenRfidReaderProfile">'
+  +'<div class="seven-rfid-reader-head"><h3 id="sevenRfidReaderTitle">Lecteur de cet hôtel</h3><span id="sevenRfidReaderBadge">À configurer</span></div>'
+  +'<p id="sevenRfidReaderInfo" class="hint"></p>'
+  +'<form id="sevenRfidReaderForm" class="seven-rfid-reader-form">'
+  +'<label>Famille de lecteur<select id="sevenRfidReaderDriver"><option value="p50">Lecteur Seven 47 (P50 / S18)</option><option value="pro-usb-v9">Lecteur Seven 71 (proUSB V9)</option></select></label>'
+  +'<label>Numéro de l’encodeur<input id="sevenRfidEncoderNo" maxlength="8" inputmode="numeric" placeholder="2922"></label>'
+  +'<label>Type de carte affiché<input id="sevenRfidCardType" maxlength="4" inputmode="numeric" placeholder="57"></label>'
+  +'<label>Version du lecteur<input id="sevenRfidReaderVersion" maxlength="48" placeholder="proUSB-V9-20171130"></label>'
+  +'<label>Connexion SDK<select id="sevenRfidReaderPort"><option value="Port1">Port principal</option><option value="Port2">Port secondaire</option></select></label>'
+  +'<button type="submit" class="outline">Enregistrer le lecteur de cet hôtel</button>'
+  +'</form><p id="sevenRfidReaderMessage" class="hint" role="status"></p></section>'
   +'<div class="seven-rfid-section" id="sevenRfidConfiguration">'
   +'<h3>Paramètres des chambres et des serrures</h3>'
   +'<form id="sevenRfidVendorForm" class="seven-rfid-vendor-form">'
   +'<label>Numéro du système de serrures de cet hôtel<input type="number" min="1" max="2147483647" step="1" id="sevenRfidVendorId" required placeholder="Numéro communiqué par votre installateur"></label>'
   +'<button type="submit" class="outline">Enregistrer l’identifiant</button></form>'
-  +'<p class="hint">À renseigner une seule fois par hôtel. Le numéro est conservé sur ce PC.</p>'
+  +'<p class="hint">Il s’agit de l’identifiant de votre hôtel dans le logiciel des serrures. Attention : le numéro d’encodeur 2922 du Seven 71 n’est pas cet identifiant.</p>'
   +'<form id="sevenRfidLockForm" class="seven-rfid-workflow-grid" autocomplete="off">'
   +'<label>Chambre Seven<select id="sevenRfidRoom" required></select></label>'
   +'<label>Bâtiment<input id="sevenRfidBuilding" maxlength="60" required placeholder="Seven 71"></label>'
@@ -56,7 +67,7 @@
  const legacy=page.querySelector(".seven-rfid-intro");if(legacy)legacy.hidden=true;
  const get=id=>panel.querySelector("#"+id);
  const message=get("sevenRfidHandoffStatus"),saveMsg=get("sevenRfidLockStatus");
- let ctx=null,layout=[],vendorHotelId=null,loadedKey="",selectedBookingId="",busy=false,readerWasReady=false;
+ let ctx=null,layout=[],vendorHotelId=null,readerProfile=null,loadedKey="",selectedBookingId="",busy=false,readerWasReady=false;
  const text=value=>String(value??"");
  const option=(value,label)=>{const o=document.createElement("option");o.value=value;o.textContent=label;return o;};
  function updateSelect(select,options,preserve){
@@ -64,12 +75,39 @@
   if(options.some(x=>x.value===preserve))select.value=preserve;
  }
  const manager=()=>["supervisor","director","manager"].includes(ctx?.role);
+ const isHotel71=()=>/(^|[^0-9])71($|[^0-9])/.test(String(ctx?.hotelName||""));
+ const specialReader=()=>isHotel71()||readerProfile?.driver==="pro-usb-v9";
+ const readerConfigured=()=>!specialReader()||!!readerProfile;
+ function renderReaderProfile(){
+  const special=specialReader(),profile=readerProfile||{
+   driver:special?"pro-usb-v9":"p50",
+   port:"Port1",encoderNo:special?"2922":"",cardType:special?"57":"",
+   dllVersion:special?"proUSB-V9-20171130":""
+  };
+  get("sevenRfidReaderTitle").textContent="Lecteur de "+(ctx?.hotelName||"cet hôtel");
+  const badge=get("sevenRfidReaderBadge");
+  badge.textContent=special?"Compatibilité à confirmer":"Configuration habituelle";
+  badge.dataset.state=special?"pending":"ready";
+  get("sevenRfidReaderInfo").textContent=special
+   ?"Lecteur proUSB V9 · encodeur 2922 · type de carte 57. Ces valeurs sont relevées dans le logiciel du fabricant. La lecture reste un diagnostic ; l’écriture et l’effacement sont bloqués tant que la compatibilité avec le SDK du fabricant n’est pas confirmée."
+   :"Le lecteur du Seven 47 garde sa configuration déjà opérationnelle. Chaque hôtel possède des paramètres distincts.";
+  get("sevenRfidReaderForm").hidden=!manager();
+  for(const [id,value] of [
+   ["sevenRfidReaderDriver",profile.driver],["sevenRfidEncoderNo",profile.encoderNo],
+   ["sevenRfidCardType",profile.cardType],["sevenRfidReaderVersion",profile.dllVersion],
+   ["sevenRfidReaderPort",profile.port]
+  ])get(id).value=value||"";
+  get("sevenRfidReaderDriver").disabled=isHotel71();
+  get("sevenRfidReaderPort").disabled=!manager();
+  get("sevenRfidPort").value=profile.port||"Port1";
+  get("sevenRfidPort").disabled=!!readerProfile||special;
+ }
  const roomById=id=>ctx?.rooms?.find(r=>r.id===id);
  const bookingById=id=>ctx?.stays?.find(s=>s.id===id&&s.status==="checked_in");
  const entryFor=id=>layout.find(e=>e.roomId===id);
  function setLockFields(){
   const room=roomById(get("sevenRfidRoom").value),entry=room&&entryFor(room.id);
-  get("sevenRfidBuilding").value=entry?.building||"";
+  get("sevenRfidBuilding").value=entry?.building||ctx?.hotelName||"";
   get("sevenRfidFloor").value=entry?.floor||text(room?.floor||"");
   get("sevenRfidLock").value=entry?.lockNo||"";
  }
@@ -171,13 +209,13 @@
  }
  function canWrite(){
   const booking=bookingById(get("sevenRfidBooking").value);
-  return !busy&&!!booking&&!!entryFor(booking.room_id)&&!!vendorHotelId&&get("sevenRfidConfirmTest").checked;
+  return !specialReader()&&!busy&&!!booking&&!!entryFor(booking.room_id)&&!!vendorHotelId&&get("sevenRfidConfirmTest").checked;
  }
  function updateButtons(){
-  get("sevenRfidRead").disabled=busy||!ctx;
+  get("sevenRfidRead").disabled=busy||!ctx||(specialReader()&&!readerConfigured());
   get("sevenRfidIssue").disabled=!canWrite();
-  get("sevenRfidErase").disabled=busy||!ctx||!vendorHotelId||!get("sevenRfidConfirmTest").checked;
-  get("sevenRfidCardLock").disabled=busy;
+  get("sevenRfidErase").disabled=specialReader()||busy||!ctx||!vendorHotelId||!get("sevenRfidConfirmTest").checked;
+  get("sevenRfidCardLock").disabled=busy||specialReader();
  }
  function renderSummary(){
   const summary=get("sevenRfidCardSummary"),booking=bookingById(get("sevenRfidBooking").value);
@@ -190,7 +228,7 @@
    ["Étage",entry?.floor||"Non configuré"],
    ["Code serrure",entry?.lockNo||"Non configuré"],
    ["Arrivée",booking.check_in||"—"],["Départ",booking.check_out||"—"],
-   ["Configuration du lecteur",vendorHotelId?"Prête":"À compléter"]
+   ["Configuration du lecteur",specialReader()?"Nouveau lecteur : à vérifier":vendorHotelId?"Prête":"À compléter"]
   ];
   for(const [label,value] of fields){
    const row=document.createElement("div"),a=document.createElement("strong"),b=document.createElement("span");
@@ -215,6 +253,7 @@
   }))),oldStay);
   selectedBookingId=staySelect.value;
   get("sevenRfidConfiguration").hidden=!manager();
+  renderReaderProfile();
   get("sevenRfidVendorId").value=vendorHotelId||"";
   const list=get("sevenRfidLayoutRows");list.replaceChildren();
   for(const entry of layout){
@@ -234,13 +273,23 @@
   if(key!==loadedKey){
    try{
     const common={userId:next.userId,hotelId:next.hotelId};
-    [layout,vendorHotelId]=await Promise.all([api.getRfidRoomLayout(common),api.getRfidVendorId(common)]);
+    selectedBookingId="";
+    readerWasReady=false;
+    [layout,vendorHotelId,readerProfile]=await Promise.all([
+     api.getRfidRoomLayout(common),api.getRfidVendorId(common),api.getRfidReaderProfile(common)]);
     loadedKey=key;saveMsg.textContent="";
-   }catch(error){layout=[];vendorHotelId=null;loadedKey="";saveMsg.textContent="Configuration inaccessible : "+(error.message||"erreur");}
+    }catch(error){layout=[];vendorHotelId=null;readerProfile=null;loadedKey="";saveMsg.textContent="Configuration inaccessible : "+(error.message||"erreur");}
   }
   render();
  }
  async function deviceStatus(){
+  if(specialReader()){
+   readerWasReady=false;
+   get("sevenRfidDeviceStatus").textContent=readerProfile
+    ?"Lecteur Seven 71 configuré séparément. Ouvrez son logiciel CardLock ; la lecture sert uniquement à vérifier la compatibilité."
+    :"Sélectionnez Seven 71 et enregistrez le profil de son lecteur avant une lecture.";
+   return;
+  }
   try{
    const data=await api.getNativeRfidStatus();
    const ready=data.readerReady===undefined?!!data.cardLockReady:!!data.readerReady;
@@ -255,6 +304,23 @@
    get("sevenRfidDeviceStatus").textContent="Le lecteur est momentanément indisponible.";
   }
  }
+ get("sevenRfidReaderForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!ctx||!manager())return;
+  const driver=isHotel71()?"pro-usb-v9":get("sevenRfidReaderDriver").value;
+  const data={
+   userId:ctx.userId,hotelId:ctx.hotelId,driver,
+   port:get("sevenRfidReaderPort").value,
+   encoderNo:get("sevenRfidEncoderNo").value,
+   cardType:get("sevenRfidCardType").value,
+   dllVersion:get("sevenRfidReaderVersion").value
+  };
+  try{
+   readerProfile=await api.saveRfidReaderProfile(data);
+   get("sevenRfidReaderMessage").textContent="Profil du lecteur enregistré uniquement pour "+ctx.hotelName+".";
+   render();await deviceStatus();
+  }catch(error){get("sevenRfidReaderMessage").textContent=error?.message||"Configuration du lecteur non enregistrée.";}
+ });
  get("sevenRfidRoom").addEventListener("change",setLockFields);
  get("sevenRfidBooking").addEventListener("change",()=>{
   selectedBookingId=get("sevenRfidBooking").value;
@@ -289,6 +355,8 @@
  async function operation(name){
   if(!ctx||busy)return;
   const stay=bookingById(get("sevenRfidBooking").value),roomId=stay?.room_id;
+  if(specialReader()&&name!=="read")return;
+  if(specialReader()&&!readerConfigured())return;
   if(name==="issue"&&!canWrite())return;
   if(name==="erase"&&(busy||!vendorHotelId||!get("sevenRfidConfirmTest").checked))return;
   if(name!=="read"&&!window.confirm(
@@ -297,7 +365,7 @@
   busy=true;updateButtons();message.dataset.result="pending";
   clearRead();
   const scannedHotelId=ctx.hotelId;
-  message.textContent=name==="read"?"Lecture de la carte et recherche du client…":name==="issue"?"Création et vérification de la carte en cours…":"Effacement et relecture en cours…";
+  message.textContent=name==="read"?(specialReader()?"Lecture de diagnostic du lecteur Seven 71…":"Lecture de la carte et recherche du client…"):name==="issue"?"Création et vérification de la carte en cours…":"Effacement et relecture en cours…";
   const payload={operation:name,userId:ctx.userId,hotelId:ctx.hotelId,roomId,
    port:get("sevenRfidPort").value,expiresAt:get("sevenRfidExpiry").value,
    cardNo:Number(get("sevenRfidCardNo").value),dai:Number(get("sevenRfidDai").value),
@@ -306,6 +374,8 @@
    const result=await api.runNativeRfid(payload);
    message.dataset.result=result.ok?"success":"error";
    message.textContent=result.message||"Le moteur RFID n'a pas répondu.";
+   if(name==="read"&&specialReader()&&!result.ok)
+    message.textContent+=" Le lecteur Seven 71 n’est pas encore reconnu par ce pilote. Il faudra les DLL/SDK de son fabricant pour finaliser la compatibilité.";
    if(name==="read"&&result.ok)api.playRfidSound?.("read").catch(()=>{});
    if(name==="issue"&&result.ok&&result.verified===true)api.playRfidSound?.("written").catch(()=>{});
    if(name==="read"&&result.ok){
@@ -341,6 +411,10 @@
  get("sevenRfidErase").addEventListener("click",()=>operation("erase"));
  get("sevenRfidCardLock").addEventListener("click",async()=>{
   if(busy)return;
+  if(specialReader()){
+   message.textContent="Lancez manuellement le CardLock fourni avec le lecteur du Seven 71. Ne lancez pas celui du Seven 47.";
+   return;
+  }
   message.textContent="Démarrage du lecteur…";
   try{const r=await api.openRfidCardLock();message.textContent=r.ok?"Lecteur démarré. Vous pouvez créer la carte directement dans Seven.":r.message||"Démarrage annulé.";}
   catch(error){message.textContent=error?.message||"Impossible de démarrer le lecteur.";}

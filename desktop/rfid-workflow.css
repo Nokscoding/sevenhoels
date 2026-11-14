@@ -59,3 +59,16 @@
 .seven-rfid-read-important strong{font-size:16px;color:#125848}
 @media(max-width:920px){.seven-rfid-read-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.seven-rfid-read-card{padding:17px 13px}.seven-rfid-read-fields{grid-template-columns:1fr}}
+
+/* Per-property RFID hardware profile: Seven 71 is not the same encoder as Seven 47. */
+.seven-rfid-reader-profile{margin:12px 0 20px;padding:17px 18px;border:1px solid #d8e4e1;background:#f8fbfa;border-radius:13px}
+.seven-rfid-reader-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+.seven-rfid-reader-head h3{font-size:16px;color:#173f43;margin:0}
+#sevenRfidReaderBadge{display:inline-flex;font-size:11px;font-weight:700;border-radius:20px;padding:7px 11px;background:#e9f4ed;color:#265e43}
+#sevenRfidReaderBadge[data-state="pending"]{background:#fff0d8;color:#835816}
+.seven-rfid-reader-profile .hint{color:#516c6d;line-height:1.55;margin:9px 0 13px;font-size:12px}
+.seven-rfid-reader-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;align-items:end}
+.seven-rfid-reader-form label{display:grid;gap:5px;font-size:12px;font-weight:700;color:#365b62}
+.seven-rfid-reader-form input,.seven-rfid-reader-form select{min-height:43px;padding:9px;border:1px solid #cbdedb;border-radius:8px;background:white;color:#24444b;width:100%}
+.seven-rfid-reader-form button{min-height:43px}
+@media(max-width:680px){.seven-rfid-reader-form{grid-template-columns:1fr}}

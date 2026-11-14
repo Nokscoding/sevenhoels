@@ -100,7 +100,15 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
    // Never let a USB connection check overlap with a physical card operation.
    if(probing)await probing;
    if(!await exists())return {ok:false,message:"Moteur RFID intégré absent. Installer la version Windows à jour."};
-   if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
+   const profile=await layout.getReaderProfile?.({userId:input.userId,hotelId:input.hotelId})||null;
+   if(profile?.driver==="pro-usb-v9"&&input.operation!=="read")
+    return {ok:false,message:"Le lecteur du Seven 71 utilise une autre famille de cartes. Écriture et effacement désactivés tant que la compatibilité du matériel et du SDK n'est pas confirmée."};
+   if(profile?.driver==="pro-usb-v9"){
+    // Read-only diagnostic: do not launch or trust the globally configured
+    // CardLock service (it may belong to the Seven 47 installation).
+    // Only the manufacturer DLL's own USB initialization can decide
+    // whether this different reader is understood.
+   }else if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
    const vendorHotelId=await layout.getVendorId({userId:input.userId,hotelId:input.hotelId});
    if(input.operation!=="read"&&!vendorHotelId)
     return {ok:false,message:"Configurer d'abord l'identifiant fabricant de cet hôtel."};
@@ -111,7 +119,7 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
     if(!found)return {ok:false,message:"Associez d'abord la chambre à sa serrure."};
     lockNo=found.lockNo;
    }
-   return await invoke({operation:input.operation,port:input.port==="Port2"?"Port2":"Port1",
+   return await invoke({operation:input.operation,port:profile?.port|| (input.port==="Port2"?"Port2":"Port1"),
     hotelId:vendorHotelId||0,lockNo,
     cardNo:input.operation==="issue"?input.cardNo:0,
     dai:input.operation==="issue"?input.dai:1,

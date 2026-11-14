@@ -86,3 +86,21 @@ test("connection sound is requested only on first USB connection and after recon
  assert.equal(third.readerReady,true);
  assert.equal(t.calls[2].payload.signal,true);
 });
+
+test("Seven 71 legacy proUSB V9 profile cannot issue or erase through the Seven 47 SDK",async()=>{
+ const t=mock();
+ t.layout.getReaderProfile=async()=>({
+  driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});
+ const issue=await t.ctrl.execute({operation:"issue",userId,hotelId,roomId,
+  expiresAt:"2026-11-15T12:00",cardNo:0,dai:1,confirmAuthorization:true});
+ const erase=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmAuthorization:true});
+ assert.equal(issue.ok,false);
+ assert.equal(erase.ok,false);
+ assert.match(issue.message,/désactivés/);
+ assert.deepEqual(t.calls,[]);
+ const read=await t.ctrl.execute({operation:"read",userId,hotelId,port:"Port2"});
+ assert.equal(read.ok,true);
+ assert.equal(t.calls.length,1);
+ assert.equal(t.calls[0].payload.operation,"read");
+ assert.equal(t.calls[0].payload.port,"Port1");
+});

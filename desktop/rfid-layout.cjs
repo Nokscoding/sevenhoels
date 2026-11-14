@@ -70,6 +70,39 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   };
   const op=writes.then(execute,execute);writes=op.catch(()=>{});return op;
  }
+ // Different properties may use incompatible card/encoder families.
+ // A reader profile NEVER contains the manufacturer hotel authorization number.
+ async function getReaderProfile({userId,hotelId}){
+  const data=await readAll();
+  return data.readerProfiles?.[key(userId,hotelId)]||null;
+ }
+ async function setReaderProfile({userId,hotelId,driver,port,encoderNo,cardType,dllVersion}){
+  const value={
+   driver:String(driver||""),
+   port:String(port||"Port1"),
+   encoderNo:String(encoderNo||"").trim(),
+   cardType:String(cardType||"").trim(),
+   dllVersion:String(dllVersion||"").trim()
+  };
+  if(!["p50","pro-usb-v9"].includes(value.driver))
+   throw Error("Famille de lecteur non reconnue.");
+  if(!["Port1","Port2"].includes(value.port))throw Error("Port du lecteur non reconnu.");
+  if(!/^\d{0,8}$/.test(value.encoderNo)||!/^\d{0,4}$/.test(value.cardType)||
+      !/^[A-Za-z0-9.\-_]{0,48}$/.test(value.dllVersion))
+   throw Error("Paramètres du lecteur invalides.");
+  if(value.driver==="pro-usb-v9"&&(!value.encoderNo||!value.cardType||!value.dllVersion))
+   throw Error("Renseignez le numéro de l'encodeur, le type de carte et la version du lecteur.");
+  const k=key(userId,hotelId);
+  const execute=async()=>{
+   const data=await readAll();
+   if(!data.readerProfiles)data.readerProfiles={};
+   data.readerProfiles[k]=value;
+   await commit(data);
+   return value;
+  };
+  const operation=writes.then(execute,execute);writes=operation.catch(()=>{});
+  return operation;
+ }
  async function get({userId,hotelId}){
   const data=await readAll();
   const rows=data.entries[key(userId,hotelId)]||previous(data,userId,hotelId);
@@ -97,6 +130,6 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   writes=operation.catch(()=>{});
   return operation;
  }
- return {get,put,getVendorId,setVendorId};
+ return {get,put,getVendorId,setVendorId,getReaderProfile,setReaderProfile};
 }
 module.exports={createRfidLayoutStore};
