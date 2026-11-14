@@ -412,8 +412,8 @@
    const result=await api.runNativeRfid(payload);
    message.dataset.result=result.ok?"success":"error";
    message.textContent=result.message||"Le moteur RFID n'a pas répondu.";
-   if(name==="read"&&specialReader()&&!result.ok)
-    message.textContent+=" Vérifiez que CardLock du Seven 71 est ouvert et que la carte est bien une RF57/T5557. Si le lecteur reste incompatible, il faudra ses DLL d’origine." ;
+   // Display the precise OEM SDK failure instead of guessing that the card
+   // or the vendor DLL is incompatible whenever a generic read fails.
    if(name==="read"&&result.ok)api.playRfidSound?.("read").catch(()=>{});
    if(name==="issue"&&result.ok&&result.verified===true)api.playRfidSound?.("written").catch(()=>{});
    if(name==="read"&&result.ok){
