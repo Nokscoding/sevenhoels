@@ -104,7 +104,8 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Installer absent" }
           if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
           if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
-          $notes = "Seven Gestion $version : module de cartes RFID directement dans le logiciel Windows, avec selection explicite et securisee de l installation CardLock qui fonctionne pour Seven 71. Le profil de l hotel est conserve dans Windows. Aucune base du fabricant, licence ou carte maitre n est copiee ni modifiee. Creation et relecture des cartes CLIENT dans Seven Gestion ; validation sur serrure de test requise avant exploitation."\n          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "$notes"
+          $notes = "Seven Gestion $version : module de cartes RFID directement dans le logiciel Windows, avec selection explicite et securisee de l installation CardLock qui fonctionne pour Seven 71. Le profil de l hotel est conserve dans Windows. Aucune base du fabricant, licence ou carte maitre n est copiee ni modifiee. Creation et relecture des cartes CLIENT dans Seven Gestion ; validation sur serrure de test requise avant exploitation."
+          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "$notes"
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
         if: always()
