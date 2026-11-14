@@ -154,3 +154,17 @@ test("Seven 71 rejects RFID writes if its own proUSB V9.27C program is not runni
  assert.equal(blocked.ok,false);
  assert.match(blocked.message,/47/);
 });
+
+test("Seven 47 does not issue cards while proUSB V9.27C of Seven 71 is open",async()=>{
+ const t=mock();
+ const controller=createRfidNativeController({
+  app:{isPackaged:true},studio:t.studio,layout:t.layout,
+  manufacturer71:{guardLegacy:async()=>({ok:false,message:"ProUSB Seven 71 est ouvert."})},
+  files:{stat:async()=>({isFile:()=>true})},
+  platform:"win32",resourcesPath:"C:\\Seven\\resources",
+  spawnProcess:()=>{throw Error("no SDK call permitted");}
+ });
+ const response=await controller.execute({operation:"read",userId,hotelId});
+ assert.equal(response.ok,false);
+ assert.match(response.message,/71/);
+});
