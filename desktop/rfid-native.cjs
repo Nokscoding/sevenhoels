@@ -115,7 +115,11 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
     if(!manufacturer71)return {ok:false,message:"Module de lancement proUSB V9.27C de Seven 71 absent."};
     const vendor=await manufacturer71.ensureRunning({userId:input.userId,hotelId:input.hotelId});
     if(!vendor.ok)return {ok:false,message:vendor.message||"Ouvrez le logiciel proUSB V9.27C du Seven 71."};
-   }else if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
+   }else {
+    const exclusive=await manufacturer71?.guardLegacy?.();
+    if(exclusive&&!exclusive.ok)return {ok:false,message:exclusive.message};
+    if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
+   }
    const vendorHotelId=await layout.getVendorId({userId:input.userId,hotelId:input.hotelId});
    if(input.operation!=="read"&&!vendorHotelId)
     return {ok:false,message:"Configurer d'abord l'identifiant fabricant de cet hôtel."};
