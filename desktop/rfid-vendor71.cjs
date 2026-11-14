@@ -93,8 +93,12 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   if(processes===null)return {ok:false,message:"Impossible de vérifier le logiciel CardLock déjà ouvert. Fermez-le et réessayez."};
   const active=distinctPaths(processes);
   if(active.length>1)return {ok:false,message:"Plusieurs installations CardLock sont ouvertes. Fermez les autres instances avant de sélectionner celle de Seven 71."};
-  if(active.length===1&&clean(active[0])!==clean(verified.path))
-   return {ok:false,message:"Le logiciel ouvert ne correspond pas au fichier choisi. Sélectionnez son chemin exact, ou utilisez « Associer le CardLock ouvert »."};
+  if(active.length===1&&clean(active[0])!==clean(verified.path)){
+   const running=await verifyInstallation(active[0],files);
+   return running.ok
+    ?{ok:false,message:"Le logiciel ouvert ne correspond pas au fichier choisi. Sélectionnez son chemin exact, ou utilisez « Associer le CardLock ouvert »."}
+    :{ok:false,message:"Un autre CardLock non reconnu est ouvert. Fermez-le avant d'utiliser le Seven 71."};
+  }
   await layout.setVendorProgram({userId,hotelId,programPath:verified.path});
   return {ok:true,configured:true,path:verified.path,
    message:"Installation fonctionnelle du Seven 71 enregistrée sur ce poste, sans modifier les données du fabricant."};
@@ -158,7 +162,7 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
    const verified=await verifyInstallation(active[0],files);
    return verified.ok
     ?{ok:false,relinkRequired:true,message:"Une installation proUSB V9.27C valide est déjà ouverte à un autre emplacement. Utilisez « Associer le CardLock ouvert » pour confirmer ce dossier."}
-    :{ok:false,conflict:true,message:"Une installation CardLock différente est ouverte. Fermez-la avant de démarrer Seven 71."};
+    :{ok:false,conflict:true,message:"Le CardLock de Seven 47 ou une version incompatible est ouvert. Fermez-le avant de démarrer Seven 71."};
   }
   if(active.length===1)
    return {ok:true,running:true,alreadyOpen:true,message:"proUSB V9.27C de Seven 71 est déjà ouvert."};
