@@ -85,3 +85,12 @@ test("rejects old Seven 47 binary even if it is named CardLock.exe",async()=>{
  assert.equal(result.ok,false);
  assert.match(result.message,/n'est pas le proUSB/);
 });
+
+test("Seven 47 is blocked only while the verified Seven 71 manufacturer program is open",async()=>{
+ const other=setup({running:[correct]});
+ const blocked=await other.launcher.guardLegacy();
+ assert.equal(blocked.ok,false);
+ assert.match(blocked.message,/71/);
+ const normal=setup({running:[wrong]});
+ assert.equal((await normal.launcher.guardLegacy()).ok,true);
+});
