@@ -92,7 +92,7 @@
   badge.textContent=special?"Lecteur RF57 · T5557":"Configuration habituelle";
   badge.dataset.state=special?"pending":"ready";
   get("sevenRfidReaderInfo").textContent=special
-   ?"Lecteur proUSB V9 · encodeur 2922 · cartes RF57 (T5557). Seven vérifie le type de carte avant la création ou l’effacement, puis contrôle le résultat par une nouvelle lecture. Gardez le CardLock du Seven 71 ouvert."
+   ?"Lecteur proUSB V9.27C du Seven 71 · encodeur 2922 · type de carte 57. Seven lance le logiciel propre à cet hôtel ; connectez-vous dans sa fenêtre avant de lire ou créer des cartes."
    :"Le lecteur du Seven 47 garde sa configuration déjà opérationnelle. Chaque hôtel possède des paramètres distincts.";
   get("sevenRfidReaderForm").hidden=!manager();
   for(const [id,value] of [
@@ -104,6 +104,7 @@
   get("sevenRfidReaderPort").disabled=!manager();
   get("sevenRfidPort").value=profile.port||"Port1";
   get("sevenRfidPort").disabled=!!readerProfile||special;
+  get("sevenRfidCardLock").textContent=special?"Ouvrir proUSB V9.27C":"Démarrer le lecteur";
  }
  const roomById=id=>ctx?.rooms?.find(r=>r.id===id);
  const bookingById=id=>ctx?.stays?.find(s=>s.id===id&&s.status==="checked_in");
@@ -218,7 +219,7 @@
   get("sevenRfidRead").disabled=busy||!ctx||(specialReader()&&!readerConfigured());
   get("sevenRfidIssue").disabled=!canWrite();
   get("sevenRfidErase").disabled=busy||!ctx||!vendorHotelId||(specialReader()&&!readerConfigured())||!get("sevenRfidConfirmTest").checked;
-  get("sevenRfidCardLock").disabled=busy||specialReader();
+  get("sevenRfidCardLock").disabled=busy;
  }
  function renderSummary(){
   const summary=get("sevenRfidCardSummary"),booking=bookingById(get("sevenRfidBooking").value);
@@ -288,9 +289,14 @@
  async function deviceStatus(){
   if(specialReader()){
    readerWasReady=false;
-   get("sevenRfidDeviceStatus").textContent=readerProfile
-    ?"Lecteur Seven 71 RF57 configuré. Ouvrez son CardLock et posez une carte pour lire, créer ou effacer après confirmation."
-    :"Sélectionnez Seven 71 et enregistrez le profil de son lecteur avant une lecture.";
+   try{
+    const vendor=await api.getProUsb71Status?.({userId:ctx?.userId,hotelId:ctx?.hotelId});
+    get("sevenRfidDeviceStatus").textContent=!readerProfile
+     ?"Enregistrez d'abord le profil du lecteur Seven 71."
+     :vendor?.running?"proUSB V9.27C du Seven 71 est ouvert. Lecteur prêt pour les opérations dans Seven."
+     :vendor?.conflict?"Un autre hôtel utilise actuellement le logiciel de serrures. Fermez-le avant de passer au Seven 71."
+     :"Démarrez proUSB V9.27C du Seven 71, connectez-vous dans sa fenêtre, puis utilisez les cartes dans Seven.";
+   }catch{get("sevenRfidDeviceStatus").textContent="Impossible de vérifier le logiciel proUSB du Seven 71.";}
    return;
   }
   try{
@@ -414,7 +420,12 @@
  get("sevenRfidCardLock").addEventListener("click",async()=>{
   if(busy)return;
   if(specialReader()){
-   message.textContent="Lancez manuellement le CardLock fourni avec le lecteur du Seven 71. Ne lancez pas celui du Seven 47.";
+   message.textContent="Ouverture de proUSB V9.27C du Seven 71…";
+   try{
+    const result=await api.openProUsb71({userId:ctx.userId,hotelId:ctx.hotelId});
+    message.textContent=result.message||(result.ok?"proUSB V9.27C ouvert. Connectez-vous, puis revenez dans Seven.":"Impossible de démarrer le lecteur Seven 71.");
+   }catch(error){message.textContent=error?.message||"Impossible d’ouvrir proUSB V9.27C de Seven 71.";}
+   await deviceStatus();
    return;
   }
   message.textContent="Démarrage du lecteur…";
