@@ -66,3 +66,15 @@ test("rejects unrecognized reader families and malformed encoders",async()=>{
  await assert.rejects(store.setReaderProfile({...body,driver:"arbitrary-dll"}),/non reconnue/);
  await assert.rejects(store.setReaderProfile({...body,driver:"pro-usb-v9",encoderNo:"../../"}),/invalides/);
 });
+
+test("vendor executable path is isolated by hotel and encrypted locally",async()=>{
+ const {store,getBlob}=fixture();
+ const hotel71="e5555555-5555-4555-8555-555555555555";
+ const vendor="D:\\LockV9.27C\\CardLock.Exe";
+ assert.equal(await store.getVendorProgram({userId:u1,hotelId:hotel71}),null);
+ await store.setVendorProgram({userId:u1,hotelId:hotel71,programPath:vendor});
+ assert.equal(await store.getVendorProgram({userId:room2,hotelId:hotel71}),vendor);
+ assert.equal(await store.getVendorProgram({userId:u1,hotelId:hotel}),null);
+ assert.equal(getBlob().includes(Buffer.from("LockV9.27C")),false);
+ await assert.rejects(store.setVendorProgram({userId:u1,hotelId:hotel,programPath:"C:\\Hotel47\\other.exe"}),/CardLock/);
+});

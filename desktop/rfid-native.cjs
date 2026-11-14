@@ -8,7 +8,7 @@ const fs=require("node:fs/promises");
 const {spawn}=require("node:child_process");
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE=/^\d{4}-\d\d-\d\dT\d\d:\d\d$/;
-function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spawn,
+function createRfidNativeController({app,studio,layout,manufacturer71=null,files=fs,spawnProcess=spawn,
  platform=process.platform,resourcesPath=process.resourcesPath,
  pause=ms=>new Promise(resolve=>setTimeout(resolve,ms))}){
  const root=app.isPackaged?path.join(resourcesPath,"rfid-studio"):path.join(__dirname,"rfid-studio","runtime");
@@ -17,6 +17,11 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
  async function exists(){try{return (await files.stat(executable)).isFile();}catch{return false;}}
  async function status(){
   const available=platform==="win32"&&await exists();
+  const guard=available?await manufacturer71?.guardLegacy?.():null;
+  if(guard&&!guard.ok){
+   readerReady=false;
+   return {supported:true,available,cardLockReady:false,readerReady:false,busy,message:guard.message};
+  }
   const service=available?await studio.status():null;
   const cardLockReady=!!service?.servicePort;
   if(!cardLockReady){
@@ -109,10 +114,17 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
        !/^proUSB-V9-[0-9]{8}$/i.test(profile.dllVersion||"")))
     return {ok:false,message:"Le profil du lecteur Seven 71 est incomplet ou ne correspond pas aux cartes RF57."};
    if(legacy){
-    // A global CardLock process/port may belong to Seven 47. Never launch it
-    // for Seven 71. The manufacturer SDK must recognize the actual RF57 card
-    // before any writing or erasure, and the hotel ID must be independently set.
-   }else if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
+    // The 71 has a distinct proUSB V9.27C executable even though both
+    // manufacturer programs are named CardLock.Exe. Never accept the
+    // Seven 47 process as initialization for this encoder.
+    if(!manufacturer71)return {ok:false,message:"Module de lancement proUSB V9.27C de Seven 71 absent."};
+    const vendor=await manufacturer71.ensureRunning({userId:input.userId,hotelId:input.hotelId});
+    if(!vendor.ok)return {ok:false,message:vendor.message||"Ouvrez le logiciel proUSB V9.27C du Seven 71."};
+   }else {
+    const exclusive=await manufacturer71?.guardLegacy?.();
+    if(exclusive&&!exclusive.ok)return {ok:false,message:exclusive.message};
+    if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
+   }
    const vendorHotelId=await layout.getVendorId({userId:input.userId,hotelId:input.hotelId});
    if(input.operation!=="read"&&!vendorHotelId)
     return {ok:false,message:"Configurer d'abord l'identifiant fabricant de cet hôtel."};

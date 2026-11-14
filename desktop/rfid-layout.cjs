@@ -103,6 +103,28 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   const operation=writes.then(execute,execute);writes=operation.catch(()=>{});
   return operation;
  }
+ // Store only the path of the explicitly selected manufacturer installation,
+ // never vendor databases or card content.
+ async function getVendorProgram({userId,hotelId}) {
+  const data=await readAll();
+  return data.vendorPrograms?.[key(userId,hotelId)]||null;
+ }
+ async function setVendorProgram({userId,hotelId,programPath}) {
+  const file=String(programPath||"").trim();
+  if(file.length<12||file.length>1024||/[\u0000-\u001f]/.test(file))
+   throw Error("Chemin du logiciel fabricant invalide.");
+  if(!/^[a-z]:\\/i.test(file)||!file.toLowerCase().endsWith("\\cardlock.exe"))
+   throw Error("Choisissez l'exécutable CardLock.Exe de proUSB V9.27C.");
+  const k=key(userId,hotelId);
+  const execute=async()=>{
+   const data=await readAll();
+   if(!data.vendorPrograms)data.vendorPrograms={};
+   data.vendorPrograms[k]=file;
+   await commit(data);
+   return file;
+  };
+  const op=writes.then(execute,execute);writes=op.catch(()=>{});return op;
+ }
  async function get({userId,hotelId}){
   const data=await readAll();
   const rows=data.entries[key(userId,hotelId)]||previous(data,userId,hotelId);
@@ -130,6 +152,6 @@ function createRfidLayoutStore({app,safeStorage,files=fs}){
   writes=operation.catch(()=>{});
   return operation;
  }
- return {get,put,getVendorId,setVendorId,getReaderProfile,setReaderProfile};
+ return {get,put,getVendorId,setVendorId,getReaderProfile,setReaderProfile,getVendorProgram,setVendorProgram};
 }
 module.exports={createRfidLayoutStore};

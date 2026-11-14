@@ -28,7 +28,9 @@ function mock(){
  };
  return {
   calls,studio,layout,
-  ctrl:createRfidNativeController({app:{isPackaged:true},studio,layout,files,
+  manufacturer71:{ensureRunning:async()=>({ok:true,running:true})},
+  ctrl:createRfidNativeController({app:{isPackaged:true},studio,layout,
+   manufacturer71:{ensureRunning:async()=>({ok:true,running:true})},files,
    platform:"win32",resourcesPath:"C:\\Seven\\resources",spawnProcess})
  };
 }
@@ -131,3 +133,38 @@ test("Seven 71 refuses unsupported RF cards, wrong hotel identification and miss
  assert.equal(noConsent.ok,false);
 });
 
+
+test("Seven 71 rejects RFID writes if its own proUSB V9.27C program is not running",async()=>{
+ const t=mock();
+ t.layout.getReaderProfile=async()=>({driver:"pro-usb-v9",port:"Port1",
+  encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});
+ t.manufacturer71.ensureRunning=async()=>({ok:false,message:"Seven 47 is running"});
+ // The native controller receives its own manufacturer71 dependency:
+ // use an explicit second mocked controller to exercise the failure branch.
+ const {createRfidNativeController}=require("../rfid-native.cjs");
+ const control=createRfidNativeController({
+  app:{isPackaged:true},studio:t.studio,layout:t.layout,
+  files:{stat:async()=>({isFile:()=>true})},platform:"win32",
+  resourcesPath:"C:\\Seven\\resources",
+  manufacturer71:{ensureRunning:async()=>({ok:false,message:"Le programme du Seven 47 est ouvert."})},
+  spawnProcess:()=>{throw Error("must not spawn bridge");}
+ });
+ const blocked=await control.execute({operation:"issue",userId,hotelId,roomId,
+  expiresAt:"2026-11-15T12:00",cardNo:0,dai:1,confirmAuthorization:true});
+ assert.equal(blocked.ok,false);
+ assert.match(blocked.message,/47/);
+});
+
+test("Seven 47 does not issue cards while proUSB V9.27C of Seven 71 is open",async()=>{
+ const t=mock();
+ const controller=createRfidNativeController({
+  app:{isPackaged:true},studio:t.studio,layout:t.layout,
+  manufacturer71:{guardLegacy:async()=>({ok:false,message:"ProUSB Seven 71 est ouvert."})},
+  files:{stat:async()=>({isFile:()=>true})},
+  platform:"win32",resourcesPath:"C:\\Seven\\resources",
+  spawnProcess:()=>{throw Error("no SDK call permitted");}
+ });
+ const response=await controller.execute({operation:"read",userId,hotelId});
+ assert.equal(response.ok,false);
+ assert.match(response.message,/71/);
+});
