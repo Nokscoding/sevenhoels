@@ -308,7 +308,7 @@ test("Seven 71 RF57 card type is derived from the Delphi SDK 25th character, wit
  const path=require("node:path");
  const bridge=fs.readFileSync(path.join(__dirname,"..","rfid-studio","source","SevenRfidBridge.cs"),"utf8");
  assert.match(bridge,/else if\(rf57\)[\s\S]*?c\.Data\[24\]/);
- assert.match(bridge,/else\{\s*Mark\("type"\);\s*byte\[\] buf=new byte\[64\];int tr=Vendor\.GetCardType/);
+ assert.match(bridge,/else\{\s*Mark\("type"\);\s*Mark\("type50"\);\s*byte\[\] buf=new byte\[64\];int tr=Vendor\.GetCardType/);
  assert.match(bridge,/ReaderCard before=Read\(rf57:family=="rf57"\)/);
  assert.match(bridge,/ReaderCard check=Read\("repeat",family=="rf57"\)/);
  assert.match(bridge,/ReaderCard verify=Read\("verify",family=="rf57"\)/);
