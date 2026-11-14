@@ -56,7 +56,7 @@
  const legacy=page.querySelector(".seven-rfid-intro");if(legacy)legacy.hidden=true;
  const get=id=>panel.querySelector("#"+id);
  const message=get("sevenRfidHandoffStatus"),saveMsg=get("sevenRfidLockStatus");
- let ctx=null,layout=[],vendorHotelId=null,loadedKey="",selectedBookingId="",busy=false;
+ let ctx=null,layout=[],vendorHotelId=null,loadedKey="",selectedBookingId="",busy=false,readerWasReady=false;
  const text=value=>String(value??"");
  const option=(value,label)=>{const o=document.createElement("option");o.value=value;o.textContent=label;return o;};
  function updateSelect(select,options,preserve){
@@ -243,10 +243,17 @@
  async function deviceStatus(){
   try{
    const data=await api.getNativeRfidStatus();
+   const ready=data.readerReady===undefined?!!data.cardLockReady:!!data.readerReady;
    get("sevenRfidDeviceStatus").textContent=!data.available?"Le lecteur est indisponible. Vérifiez l’installation de Seven sur Windows."
-    :data.cardLockReady?"Lecteur prêt."
+    :ready?"Lecteur connecté et prêt."
+    :data.cardLockReady?"Le logiciel du lecteur est ouvert, mais le S18 ne répond pas. Vérifiez le câble USB."
     :"Le lecteur n’est pas encore prêt. Cliquez sur « Démarrer le lecteur ».";
-  }catch{get("sevenRfidDeviceStatus").textContent="Le lecteur est momentanément indisponible.";}
+   if(ready&&!readerWasReady)api.playRfidSound?.("connected").catch(()=>{});
+   readerWasReady=ready;
+  }catch{
+   readerWasReady=false;
+   get("sevenRfidDeviceStatus").textContent="Le lecteur est momentanément indisponible.";
+  }
  }
  get("sevenRfidRoom").addEventListener("change",setLockFields);
  get("sevenRfidBooking").addEventListener("change",()=>{
@@ -299,6 +306,8 @@
    const result=await api.runNativeRfid(payload);
    message.dataset.result=result.ok?"success":"error";
    message.textContent=result.message||"Le moteur RFID n'a pas répondu.";
+   if(name==="read"&&result.ok)api.playRfidSound?.("read").catch(()=>{});
+   if(name==="issue"&&result.ok&&result.verified===true)api.playRfidSound?.("written").catch(()=>{});
    if(name==="read"&&result.ok){
     const isGuest=result.type==="6";
     let customer=null;
@@ -336,6 +345,8 @@
   try{const r=await api.openRfidCardLock();message.textContent=r.ok?"Lecteur démarré. Vous pouvez créer la carte directement dans Seven.":r.message||"Démarrage annulé.";}
   catch(error){message.textContent=error?.message||"Impossible de démarrer le lecteur.";}
   await deviceStatus();
+  // CardLock may take a moment to finish starting before USB is available.
+  if(!readerWasReady)setTimeout(()=>{deviceStatus();},1400);
  });
  window.addEventListener("seven:rfid-context",()=>refresh());
  document.addEventListener("click",event=>{
