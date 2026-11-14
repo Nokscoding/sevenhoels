@@ -51,6 +51,12 @@ internal sealed class ReaderCard {
 }
 internal static class Bridge {
  static readonly JavaScriptSerializer Json=new JavaScriptSerializer();
+ // Only non-sensitive operation names go to stderr, never hotel ids, raw
+ // card contents, DLL locations or manufacturer registration values.
+ static void Mark(string stage){
+  Console.Error.WriteLine("SEVEN_STAGE:"+stage);
+  Console.Error.Flush();
+ }
  static string Str(Dictionary<string,object> o,string k) {
   object value;return o.TryGetValue(k,out value)&&value!=null?Convert.ToString(value,CultureInfo.InvariantCulture):"";
  }
@@ -67,7 +73,8 @@ internal static class Bridge {
   foreach(char c in s)if(!Uri.IsHexDigit(c))return false;
   return true;
  }
- static ReaderCard Read(){
+ static ReaderCard Read(string stage="card"){
+  Mark(stage);
   byte[] b=new byte[4096];for(int i=0;i<b.Length;i++)b[i]=0xA5;
   int rc=Vendor.ReadCard(1,b);
   ReaderCard c=new ReaderCard();c.Code=rc;c.Data=Decode(b);
@@ -81,6 +88,7 @@ internal static class Bridge {
   c.Valid=true;c.Sequence=c.Data.Substring(24,8);
   if(c.Sequence.Equals("FFFFFFFF",StringComparison.OrdinalIgnoreCase))c.Type="F";
   else{
+   Mark("type");
    byte[] buf=new byte[64];int tr=Vendor.GetCardType(c.Data,buf);
    if(tr==0){string s=Decode(buf);if(s.Length>0)c.Type=s.Substring(0,1).ToUpperInvariant();}
   }
@@ -126,6 +134,7 @@ internal static class Bridge {
  // Only a responding RF57 / T5557 card qualifies for RF57 operations.
  // Never silently fall back to a P50 card or a guessed card family.
  static string ReadRF57CardId() {
+  Mark("id");
   byte[] identifier=new byte[4096];
   int status=Vendor.ReadCardID_T5557(1,identifier);
   // Some verified OEM cards return 1 for their optional immutable T5557 ID,
@@ -170,6 +179,7 @@ internal static class Bridge {
     return Error("Installation CardLock du Seven 71 incomplète. Ne modifiez pas sa base.");
   }
   if(!Directory.Exists(sdk))return Error("Dossier SDK introuvable.");
+  Mark("dll");
   Vendor.SetDllDirectory(sdk);
   string[] names=family=="rf57"
    ?new string[]{"MSVCRTD.DLL","MFC42D.DLL","d12.dll","d12c.dll","proRFL.dll"}
@@ -177,6 +187,7 @@ internal static class Bridge {
   foreach(string name in names)if(!File.Exists(Path.Combine(sdk,name))||
       Vendor.LoadLibrary(Path.Combine(sdk,name))==IntPtr.Zero)
     return Error("Bibliothèque fabricant indisponible : "+name);
+  Mark("usb");
   int connected=Vendor.InitializeUSB(1);
   if(connected!=0)return Error("Initialisation S18 refusée par SDK : "+connected,connected);
   try {
@@ -214,7 +225,7 @@ internal static class Bridge {
     if(Vendor.GetGuestLockNo(hotel,before.Data,currentLock)!=0)
      return Error("La carte ne correspond pas à l'identifiant du Seven 71 : effacement annulé.");
    }
-   ReaderCard check=Read();
+   ReaderCard check=Read("repeat");
    if(!check.Valid||check.Data!=before.Data)return Error("La carte a été retirée ou remplacée : opération annulée.");
    if(family=="rf57"&&rf57Id!=null){
     try {
@@ -223,10 +234,11 @@ internal static class Bridge {
    }
    byte[] output=new byte[4096];
    if(operation=="erase"){
+    Mark("erase");
     int erased=Vendor.CardErase(1,hotel,output);
     if(erased!=0)return Error("CardErase a refusé l'effacement, code "+erased,erased);
     Thread.Sleep(300);
-    ReaderCard after=Read();
+    ReaderCard after=Read("verify");
     bool blank=after.Valid&&after.Type=="F";
     if(family=="rf57"&&rf57Id!=null){
      try{blank=blank&&ReadRF57CardId()==rf57Id;}
@@ -248,10 +260,11 @@ internal static class Bridge {
     return Error("Date de fin de séjour non valide.");
    string begin=DateTime.Now.ToString("yyMMddHHmm",CultureInfo.InvariantCulture);
    string expiry=expiryDate.ToString("yyMMddHHmm",CultureInfo.InvariantCulture);
+   Mark("write");
    int issued=Vendor.GuestCard(1,hotel,(byte)number,(byte)dai,0,0,begin,expiry,lockNo,output);
    if(issued!=0)return Error("GuestCard a refusé l'écriture, code "+issued,issued);
    Thread.Sleep(300);
-   ReaderCard verify=Read();
+   ReaderCard verify=Read("verify");
    bool verified=VerifiedGuest(verify,hotel,lockNo,expiry);
    if(family=="rf57"&&rf57Id!=null){
     try{verified=verified&&ReadRF57CardId()==rf57Id;}
@@ -263,7 +276,7 @@ internal static class Bridge {
        ?"Carte client créée ; chambre et date de fin vérifiées."
        :"GuestCard retourne 0 mais la relecture ne confirme pas le contenu. Gardez la carte et relisez-la."}};
   }finally{
-   try{Vendor.CloseUSB(1);}catch{}
+   try{Mark("close");Vendor.CloseUSB(1);}catch{}
   }
  }
  public static int Main(string[] args) {

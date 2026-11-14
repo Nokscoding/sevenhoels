@@ -192,3 +192,58 @@ test("Seven 47 remains on the original P50 SDK path, without a vendor DLL overri
  assert.equal(t.calls[0].payload.readerFamily,"p50");
  assert.equal(t.calls[0].payload.vendorDirectory,"");
 });
+
+test("OEM native process crash reports its last hardware stage instead of unreadable response",async()=>{
+ const studio={status:async()=>({servicePort:10086}),openCardLock:async()=>({ok:true})};
+ const layout={getVendorId:async()=>48231,get:async()=>[],
+  getReaderProfile:async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"})};
+ const spawnProcess=()=>{
+  const child=new EventEmitter();
+  child.stdout=new PassThrough();
+  child.stderr=new PassThrough();
+  child.kill=()=>{};
+  child.stdin=new PassThrough();
+  child.stdin.on("data",()=>queueMicrotask(()=>{
+   child.stderr.emit("data",Buffer.from("SEVEN_STAGE:usb\n"));
+   child.emit("close",-1073741819,null); // NTSTATUS 0xC0000005
+  }));
+  return child;
+ };
+ const ctrl=createRfidNativeController({app:{isPackaged:true},studio,layout,
+  manufacturer71:{ensureRunning:async()=>({ok:true,running:true}),
+   state:async()=>({ok:true,running:true,path:"D:\\Seven71\\CardLock.exe"})},
+  files:{stat:async()=>({isFile:()=>true})},platform:"win32",
+  resourcesPath:"C:\\Seven\\resources",spawnProcess});
+ const result=await ctrl.execute({operation:"read",userId,hotelId});
+ assert.equal(result.ok,false);
+ assert.match(result.message,/Initialisation du lecteur USB/);
+ assert.match(result.message,/0xC0000005/);
+ assert.doesNotMatch(result.message,/illisible/i);
+});
+test("interrupted write warns to reread the same card before attempting again",async()=>{
+ const studio={status:async()=>({servicePort:10086}),openCardLock:async()=>({ok:true})};
+ const layout={getVendorId:async()=>48231,get:async()=>[{roomId,lockNo:"01020A"}],
+  getReaderProfile:async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"})};
+ const spawnProcess=()=>{
+  const child=new EventEmitter();
+  child.stdout=new PassThrough();
+  child.stderr=new PassThrough();
+  child.kill=()=>{};
+  child.stdin=new PassThrough();
+  child.stdin.on("data",()=>queueMicrotask(()=>{
+   child.stderr.emit("data",Buffer.from("SEVEN_STAGE:write\n"));
+   child.emit("close",-1073741819,null);
+  }));
+  return child;
+ };
+ const ctrl=createRfidNativeController({app:{isPackaged:true},studio,layout,
+  manufacturer71:{ensureRunning:async()=>({ok:true,running:true}),
+   state:async()=>({ok:true,running:true,path:"D:\\Seven71\\CardLock.exe"})},
+  files:{stat:async()=>({isFile:()=>true})},platform:"win32",
+  resourcesPath:"C:\\Seven\\resources",spawnProcess});
+ const result=await ctrl.execute({operation:"issue",userId,hotelId,roomId,
+  expiresAt:"2026-11-16T12:00",cardNo:0,dai:2,confirmAuthorization:true});
+ assert.equal(result.ok,false);
+ assert.match(result.message,/peut-être été modifiée/);
+ assert.match(result.message,/relisez-la/);
+});

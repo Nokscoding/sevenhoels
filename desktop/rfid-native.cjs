@@ -55,21 +55,41 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
  }
  function invoke(data){
   return new Promise((resolve)=>{
-   let settled=false,out="";
+   let settled=false,out="",lastStage="";
+   const stages={
+    "dll":"Chargement des bibliothèques du fabricant",
+    "usb":"Initialisation du lecteur USB",
+    "id":"Lecture de l'identifiant matériel de la carte",
+    "card":"Lecture des données de la carte",
+    "type":"Identification du type de carte",
+    "repeat":"Vérification de la même carte",
+    "write":"Écriture de la carte CLIENT",
+    "erase":"Effacement de la carte CLIENT",
+    "verify":"Relecture après programmation",
+    "close":"Fermeture de la connexion USB"
+   };
    const done=result=>{if(settled)return;settled=true;clearTimeout(timer);resolve(result);};
    let child;
-   try{child=spawnProcess(executable,[],{cwd:root,windowsHide:true,shell:false,stdio:["pipe","pipe","ignore"]});}
+   try{child=spawnProcess(executable,[],{cwd:root,windowsHide:true,shell:false,stdio:["pipe","pipe","pipe"]});}
    catch{return resolve({ok:false,message:"Démarrage du moteur natif impossible."});}
    const timer=setTimeout(()=>{try{child.kill();}catch{}done({ok:false,message:"Le lecteur ne répond plus ; opération interrompue."});},30000);
    child.once("error",()=>done({ok:false,message:"Le moteur natif ne démarre pas."}));
+   child.stderr?.on("data",chunk=>{
+    const lines=chunk.toString("utf8").split(/\r?\n/);
+    for(const line of lines){
+     const found=/SEVEN_STAGE:([a-z]+)/.exec(line);
+     if(found && Object.hasOwn(stages,found[1]))lastStage=found[1];
+    }
+   });
    child.stdout.on("data",data=>{
     out+=data.toString("utf8");
     if(out.length>15000){try{child.kill();}catch{}done({ok:false,message:"Réponse RFID trop volumineuse."});}
    });
-   child.once("close",()=>{
+   child.once("close",(exitCode,signal)=>{
     if(settled)return;
     try{
-     const parsed=JSON.parse(out.trim());
+     const lines=out.trim().split(/\r?\n/);
+     const parsed=JSON.parse(lines[lines.length-1]);
      if(!parsed||typeof parsed!=="object"||typeof parsed.ok!=="boolean")
       throw Error("Invalid bridge response");
      done({
@@ -79,7 +99,15 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
       verified:parsed.verified===true,decoded:parsed.decoded===true,
       message:String(parsed.message||"Réponse du SDK reçue.").slice(0,240)
      });
-    }catch{done({ok:false,message:"Réponse native illisible. Vérifier les DLL du fabricant."});}
+    }catch{
+     const stage=stages[lastStage]||"Démarrage du moteur RFID";
+     const danger=["write","erase","verify","close"].includes(lastStage);
+     const code=Number.isInteger(exitCode)?" (Windows 0x"+(exitCode>>>0).toString(16).toUpperCase()+")":signal?" (processus interrompu)":"";
+     const followup=danger
+      ?" La carte a peut-être été modifiée : retirez-la et relisez-la avant toute nouvelle écriture."
+      :" Aucune écriture confirmée. Vérifiez le lecteur et l'installation d'origine.";
+     done({ok:false,stage:lastStage||"unknown",message:"Moteur RFID interrompu pendant : "+stage+code+"."+followup});
+    }
    });
    const json=JSON.stringify(data);
    child.stdin.on("error",()=>{});
