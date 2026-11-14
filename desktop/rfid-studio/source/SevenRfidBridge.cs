@@ -139,6 +139,7 @@ internal static class Bridge {
   string operation=Str(request,"operation");
   string port=Str(request,"port");
   string family=Str(request,"readerFamily");
+  if(operation=="connect"&&family=="")family="p50"; // existing reader connection probe
   if(family!="p50"&&family!="rf57")return Error("Famille de lecteur absente ou invalide.");
   if(family=="rf57"&&Str(request,"cardType")!="57")return Error("Ce lecteur attend des cartes RF57.");
   if(port!="Port1"&&port!="Port2")return Error("Port SDK inconnu.");
