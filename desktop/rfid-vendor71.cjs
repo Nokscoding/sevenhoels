@@ -13,6 +13,10 @@ const DEFAULT_INSTALLS=[
  "C:\\LockV9.27C\\CardLock.Exe"
 ];
 const clean=p=>path.win32.normalize(String(p||"").trim()).toLowerCase();
+const distinctPaths=paths=>[...new Map(
+ (Array.isArray(paths)?paths:[]).filter(p=>typeof p==="string"&&p.trim())
+ .map(p=>[clean(p),p.trim()])
+).values()];
 async function fingerprint(file,files){
  const bytes=await files.readFile(file);
  return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -87,11 +91,38 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   if(!verified.ok)return verified;
   const processes=await runningPaths();
   if(processes===null)return {ok:false,message:"Impossible de vérifier le logiciel CardLock déjà ouvert. Fermez-le et réessayez."};
-  if(processes.some(p=>clean(p)!==clean(verified.path)))
-   return {ok:false,message:"Un autre CardLock est ouvert. Fermez-le avant de choisir l'installation fonctionnelle du Seven 71."};
+  const active=distinctPaths(processes);
+  if(active.length>1)return {ok:false,message:"Plusieurs installations CardLock sont ouvertes. Fermez les autres instances avant de sélectionner celle de Seven 71."};
+  if(active.length===1&&clean(active[0])!==clean(verified.path))
+   return {ok:false,message:"Le logiciel ouvert ne correspond pas au fichier choisi. Sélectionnez son chemin exact, ou utilisez « Associer le CardLock ouvert »."};
   await layout.setVendorProgram({userId,hotelId,programPath:verified.path});
   return {ok:true,configured:true,path:verified.path,
    message:"Installation fonctionnelle du Seven 71 enregistrée sur ce poste, sans modifier les données du fabricant."};
+ }
+ // Operator-confirmed recovery: the active CardLock may have been moved or
+ // unpacked to a different folder than Seven stored previously. Only bind
+ // one running, verified proUSB V9.27C installation; never read/write its DB.
+ async function associateRunning({userId,hotelId,confirmWorkingInstallation=false}={}){
+  if(platform!=="win32")return {ok:false,message:"Cette fonction nécessite Seven Gestion Windows."};
+  const profile=await layout.getReaderProfile({userId,hotelId});
+  if(profile?.driver!=="pro-usb-v9")
+   return {ok:false,message:"Le lecteur Seven 71 doit être configuré comme proUSB V9."};
+  if(confirmWorkingInstallation!==true)
+   return {ok:false,message:"Confirmez que cette installation a réellement programmé les serrures de Seven 71."};
+  const processes=await runningPaths();
+  if(processes===null)return {ok:false,message:"Impossible de vérifier les processus CardLock actuellement ouverts."};
+  const active=distinctPaths(processes);
+  if(active.length!==1)return {ok:false,message:active.length===0
+   ?"Ouvrez d'abord le CardLock fonctionnel du Seven 71, puis réessayez."
+   :"Plusieurs CardLock sont ouverts. Fermez les autres instances avant de continuer."};
+  const verified=await verifyInstallation(active[0],files);
+  if(!verified.ok)return {ok:false,message:"Le CardLock ouvert ne correspond pas aux fichiers proUSB V9.27C vérifiés : "+verified.message};
+  const again=await runningPaths();
+  if(again===null||distinctPaths(again).length!==1||clean(distinctPaths(again)[0])!==clean(verified.path))
+   return {ok:false,message:"Le logiciel CardLock ouvert a changé pendant la vérification. Réessayez."};
+  await layout.setVendorProgram({userId,hotelId,programPath:verified.path});
+  return {ok:true,configured:true,running:true,path:verified.path,
+   message:"Le CardLock actuellement ouvert a été associé au Seven 71. Aucune base de données fabricant n'a été modifiée."};
  }
  async function state({userId,hotelId}){
   if(platform!=="win32")return {ok:false,message:"Disponible uniquement sous Windows."};
@@ -101,10 +132,17 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   if(!program.ok)return {ok:false,configured:false,running:false,message:program.message};
   const processes=await runningPaths();
   if(processes===null)return {ok:false,configured:true,running:false,message:"Impossible de vérifier quel logiciel de serrures est ouvert sur Windows."};
-  const others=processes.filter(p=>clean(p)!==clean(program.path));
-  if(others.length)return {ok:false,configured:true,running:false,conflict:true,
-   message:"Le logiciel d'un autre hôtel est ouvert. Fermez-le avant de travailler avec le lecteur du Seven 71."};
-  return {ok:true,configured:true,running:processes.some(p=>clean(p)===clean(program.path)),path:program.path};
+  const active=distinctPaths(processes);
+  if(active.length>1)return {ok:false,configured:true,running:false,conflict:true,
+   message:"Plusieurs installations CardLock sont ouvertes. Fermez les autres instances avant de travailler avec le Seven 71."};
+  if(active.length===1&&clean(active[0])!==clean(program.path)){
+   const verified=await verifyInstallation(active[0],files);
+   if(verified.ok)return {ok:false,configured:true,running:false,relinkRequired:true,
+    message:"Le CardLock ouvert est une installation proUSB V9.27C valide, mais le chemin enregistré est différent. Cliquez sur « Associer le CardLock ouvert » pour choisir cette installation."};
+   return {ok:false,configured:true,running:false,conflict:true,
+    message:"Le CardLock ouvert n'a pas les fichiers constructeur vérifiés pour le Seven 71. Fermez-le ou choisissez l'installation correcte."};
+  }
+  return {ok:true,configured:true,running:active.length===1,path:program.path};
  }
  async function launch({userId,hotelId}){
   if(platform!=="win32")return {ok:false,message:"Le logiciel proUSB nécessite Windows."};
@@ -114,9 +152,15 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   if(!program.ok)return program;
   const processes=await runningPaths();
   if(processes===null)return {ok:false,message:"Seven ne peut pas vérifier si le logiciel du Seven 47 est ouvert. Vérifiez Windows avant de continuer."};
-  if(processes.some(p=>clean(p)!==clean(program.path)))
-   return {ok:false,message:"Fermez le logiciel de serrures de Seven 47 avant d'ouvrir proUSB V9.27C du Seven 71."};
-  if(processes.some(p=>clean(p)===clean(program.path)))
+  const active=distinctPaths(processes);
+  if(active.length>1)return {ok:false,message:"Plusieurs CardLock sont ouverts. Fermez les instances en double."};
+  if(active.length===1&&clean(active[0])!==clean(program.path)){
+   const verified=await verifyInstallation(active[0],files);
+   return verified.ok
+    ?{ok:false,relinkRequired:true,message:"Une installation proUSB V9.27C valide est déjà ouverte à un autre emplacement. Utilisez « Associer le CardLock ouvert » pour confirmer ce dossier."}
+    :{ok:false,conflict:true,message:"Une installation CardLock différente est ouverte. Fermez-la avant de démarrer Seven 71."};
+  }
+  if(active.length===1)
    return {ok:true,running:true,alreadyOpen:true,message:"proUSB V9.27C de Seven 71 est déjà ouvert."};
   try{
    await new Promise((resolve,reject)=>{
@@ -143,7 +187,7 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
  async function ensureRunning(input){
   const result=await state(input);
   if(result.ok&&result.running)return {ok:true,running:true};
-  if(result.conflict)return result;
+  if(result.conflict||result.relinkRequired)return result;
   if(!result.configured){
    const started=await launch(input);
    if(!started.ok)return started;
@@ -152,6 +196,6 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   if(result.ok&&!result.running)return {ok:false,message:"Ouvrez d'abord proUSB V9.27C de Seven 71 avec le bouton « Démarrer le lecteur », puis connectez-vous."};
   return result;
  }
- return {state,launch,choose,ensureRunning,guardLegacy};
+ return {state,launch,choose,associateRunning,ensureRunning,guardLegacy};
 }
 module.exports={createProUsb71Launcher,verifyProUsb71,PROUSB71_SHA256,PRORFL_SHA256};
