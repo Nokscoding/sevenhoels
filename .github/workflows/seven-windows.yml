@@ -104,7 +104,7 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Installer absent" }
           if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
           if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
-          $notes = "Seven Gestion $version : correction RFID Seven 71. Chargement des DLL d origine proUSB V9.27C depuis l installation CardLock verifiee et ouverte. Lecture des cartes RF57 par le SDK fabricant, meme si l identifiant T5557 optionnel est indisponible (code 1), uniquement si les donnees de carte sont valides et relues avant toute ecriture. Les cartes clients sont verifiees apres emission. Protection des autres hotels et des cartes maitresses conservee. Tester sur une serrure isolee, porte ouverte."
+          $notes = "Seven Gestion $version : diagnostic du moteur RFID Seven 71 lorsqu une DLL constructeur interrompt l execution. L application indique maintenant si l incident survient au chargement de la DLL, a l initialisation USB, a la lecture, a l ecriture ou a la verification, et avertit si une carte peut avoir ete modifiee. Configuration chambre simplifiee avec Lock Number fabricant et identifiant hotel enregistre une fois. Aucune modification de CardLock, de sa base ou du firmware. Lecture et creation de cartes a valider sur une carte et serrure de test."
           gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "$notes"
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
