@@ -106,6 +106,17 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
     message:"proUSB V9.27C de Seven 71 est lancé. Ouvrez votre session dans ce logiciel, puis utilisez les cartes dans Seven."};
   }catch{return {ok:false,message:"Impossible de démarrer proUSB V9.27C. Vérifiez son installation sur ce PC."};}
  }
+ // Do not allow a Seven 47 operation while the different Seven 71
+ // manufacturer program has exclusive access to the USB encoder.
+ async function guardLegacy(){
+  const processes=await runningPaths();
+  if(processes===null)return {ok:true,unverified:true}; // preserve the existing working 47 integration
+  for(const file of processes){
+   if((await verifyInstallation(file,files)).ok)
+    return {ok:false,message:"Le logiciel proUSB V9.27C de Seven 71 est ouvert. Fermez-le avant d'utiliser le lecteur de Seven 47."};
+  }
+  return {ok:true};
+ }
  async function ensureRunning(input){
   const result=await state(input);
   if(result.ok&&result.running)return {ok:true,running:true};
@@ -118,6 +129,6 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   if(result.ok&&!result.running)return {ok:false,message:"Ouvrez d'abord proUSB V9.27C de Seven 71 avec le bouton « Démarrer le lecteur », puis connectez-vous."};
   return result;
  }
- return {state,launch,ensureRunning};
+ return {state,launch,ensureRunning,guardLegacy};
 }
 module.exports={createProUsb71Launcher,verifyProUsb71,PROUSB71_SHA256,PRORFL_SHA256};
