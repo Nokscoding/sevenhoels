@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("sevenDesktop",Object.freeze({
  openRfidCardLock:()=>ipcRenderer.invoke("seven:rfid-cardlock-open"),
  getRfidRoomLayout:payload=>ipcRenderer.invoke("seven:rfid-layout-read",payload),
  saveRfidRoomLayout:payload=>ipcRenderer.invoke("seven:rfid-layout-put",payload),
+ getRfidReaderProfile:payload=>ipcRenderer.invoke("seven:rfid-profile-read",payload),
+ saveRfidReaderProfile:payload=>ipcRenderer.invoke("seven:rfid-profile-save",payload),
  getRfidVendorId:payload=>ipcRenderer.invoke("seven:rfid-vendor-read",payload),
  saveRfidVendorId:payload=>ipcRenderer.invoke("seven:rfid-vendor-save",payload),
  getNativeRfidStatus:()=>ipcRenderer.invoke("seven:rfid-native-status"),
