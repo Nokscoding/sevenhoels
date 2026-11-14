@@ -25,6 +25,7 @@
   +'<label>Connexion SDK<select id="sevenRfidReaderPort"><option value="Port1">Port principal</option><option value="Port2">Port secondaire</option></select></label>'
   +'<button type="submit" class="outline">Enregistrer le lecteur de cet hôtel</button>'
   +'</form><button type="button" id="sevenRfidChooseVendor" class="outline">Choisir le CardLock qui fonctionne</button>'
+  +'<button type="button" id="sevenRfidAssociateActive" class="outline">Associer le CardLock ouvert</button>'
   +'<p id="sevenRfidReaderMessage" class="hint" role="status"></p></section>'
   +'<div class="seven-rfid-section" id="sevenRfidConfiguration">'
   +'<h3>Paramètres des chambres et des serrures</h3>'
@@ -97,6 +98,7 @@
    :"Le lecteur du Seven 47 garde sa configuration déjà opérationnelle. Chaque hôtel possède des paramètres distincts.";
   get("sevenRfidReaderForm").hidden=!manager();
   get("sevenRfidChooseVendor").hidden=!special||!manager();
+  get("sevenRfidAssociateActive").hidden=!special||!manager();
   for(const [id,value] of [
    ["sevenRfidReaderDriver",profile.driver],["sevenRfidEncoderNo",profile.encoderNo],
    ["sevenRfidCardType",profile.cardType],["sevenRfidReaderVersion",profile.dllVersion],
@@ -296,7 +298,8 @@
     get("sevenRfidDeviceStatus").textContent=!readerProfile
      ?"Enregistrez d'abord le profil du lecteur Seven 71."
      :vendor?.running?"proUSB V9.27C du Seven 71 est ouvert. Présentez une carte pour vérifier la connexion du lecteur."
-     :vendor?.conflict?"Un autre hôtel utilise actuellement le logiciel de serrures. Fermez-le avant de passer au Seven 71."
+     :vendor?.relinkRequired?"Le CardLock ouvert est une installation proUSB valide, mais son dossier est différent. Cliquez sur « Associer le CardLock ouvert » pour confirmer."
+     :vendor?.conflict?"Une installation CardLock incompatible ou plusieurs instances sont ouvertes. Vérifiez les fenêtres du fabricant."
      :"Démarrez proUSB V9.27C du Seven 71, connectez-vous dans sa fenêtre, puis utilisez les cartes dans Seven.";
    }catch{get("sevenRfidDeviceStatus").textContent="Impossible de vérifier le logiciel proUSB du Seven 71.";}
    return;
@@ -315,6 +318,20 @@
    get("sevenRfidDeviceStatus").textContent="Le lecteur est momentanément indisponible.";
   }
  }
+ get("sevenRfidAssociateActive").addEventListener("click",async()=>{
+  if(!ctx||!manager()||!specialReader()||typeof api.associateRunningProUsb71!=="function")return;
+  if(!window.confirm("Le CardLock actuellement ouvert est-il celui qui vient de programmer avec succès les serrures du Seven 71 ? Vérifiez qu'aucun autre CardLock n'est ouvert."))return;
+  const button=get("sevenRfidAssociateActive"),notice=get("sevenRfidReaderMessage");
+  button.disabled=true;notice.textContent="Vérification de l'installation CardLock actuellement ouverte…";
+  try{
+   const result=await api.associateRunningProUsb71({
+    userId:ctx.userId,hotelId:ctx.hotelId,confirmWorkingInstallation:true
+   });
+   notice.textContent=result.message||(result.ok?"CardLock associé au Seven 71.":"Association refusée.");
+   if(result.ok)await deviceStatus();
+  }catch(error){notice.textContent=error?.message||"Impossible d'associer le CardLock ouvert.";}
+  finally{button.disabled=false;}
+ });
  get("sevenRfidChooseVendor").addEventListener("click",async()=>{
   if(!ctx||!manager()||!specialReader()||typeof api.chooseProUsb71!=="function")return;
   const button=get("sevenRfidChooseVendor"),notice=get("sevenRfidReaderMessage");

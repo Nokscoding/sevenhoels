@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("sevenDesktop",Object.freeze({
  openProUsb71:payload=>ipcRenderer.invoke("seven:rfid-vendor71-open",payload),
  getProUsb71Status:payload=>ipcRenderer.invoke("seven:rfid-vendor71-status",payload),
  chooseProUsb71:payload=>ipcRenderer.invoke("seven:rfid-vendor71-select",payload),
+ associateRunningProUsb71:payload=>ipcRenderer.invoke("seven:rfid-vendor71-associate-active",payload),
  playRfidSound:kind=>ipcRenderer.invoke("seven:rfid-sound",kind),
  getUpdateState:()=>ipcRenderer.invoke("seven:update-state"),
  checkForUpdates:()=>ipcRenderer.invoke("seven:update-check"),
