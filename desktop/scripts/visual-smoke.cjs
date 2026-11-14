@@ -85,7 +85,7 @@ async function run(){
   // Exercise the real inline RFID panel using an entirely fake hardware bridge.
   const rfid=await win.webContents.executeJavaScript(
    '(async function(){'+
-   'window.__rfidOps=[];'+
+   'window.__rfidOps=[];window.__rfidSounds=[];'+
    'const hotel="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",room="cccccccc-cccc-4ccc-8ccc-cccccccccccc",stay="dddddddd-dddd-4ddd-8ddd-dddddddddddd";'+
    'window.SevenRfidContext=()=>({userId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",hotelId:hotel,hotelName:"Seven Test",role:"manager",'+
     'rooms:[{id:room,hotel_id:hotel,number:"131",floor:"1"}],'+
@@ -96,14 +96,14 @@ async function run(){
     'saveRfidRoomLayout:async()=>({}),getRfidVendorId:async()=>12345,saveRfidVendorId:async()=>12345,'+
     'getNativeRfidStatus:async()=>({available:true,cardLockReady:true}),'+
     'runNativeRfid:async payload=>{window.__rfidOps.push(payload.operation);return {ok:true,type:"6",sequence:"AB12CD34",lockNo:"01020A",expiry:"2611141200",decoded:true,message:"Carte client reconnue"}},'+
-    'openRfidCardLock:async()=>({ok:true})};'+
+    'openRfidCardLock:async()=>({ok:true}),playRfidSound:async kind=>{window.__rfidSounds.push(kind)}};'+
    'await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="./rfid-workflow-ui.js";script.onload=resolve;script.onerror=()=>reject(Error("Inline RFID UI not loadable"));document.body.append(script)});'+
    'await new Promise(resolve=>setTimeout(resolve,130));'+
    'document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="rfidPage"));'+
    'const panel=document.getElementById("sevenRfidWorkflow"),read=document.getElementById("sevenRfidRead"),issue=document.getElementById("sevenRfidIssue");'+
    'if(!panel||!read||!issue||read.disabled)throw Error("Native RFID panel unavailable");'+
    'read.click();await new Promise(resolve=>setTimeout(resolve,65));'+
-   'return {operations:window.__rfidOps,visible:panel.getBoundingClientRect().height>100,issuePresent:!!issue,'+
+   'return {operations:window.__rfidOps,sounds:window.__rfidSounds,visible:panel.getBoundingClientRect().height>100,issuePresent:!!issue,'+
    'guestVisible:document.getElementById("sevenRfidReadTitle")?.textContent==="Marie Exemple",'+
    'roomVisible:document.getElementById("sevenRfidReadFields")?.textContent.includes("131"),'+
    'cardVisible:!document.getElementById("sevenRfidCardDetails").hidden,'+
@@ -112,6 +112,8 @@ async function run(){
     'overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};})()',true
   );
   assert.deepEqual(rfid.operations,["read"],"Reading must invoke the inline native bridge");
+  assert.ok(rfid.sounds.includes("connected"),"Reader connection must trigger a sound");
+  assert.ok(rfid.sounds.includes("read"),"Successful card read must trigger a sound");
   assert.equal(rfid.visible,true,"Native RFID panel must be visible");
   assert.equal(rfid.issuePresent,true,"Native encode button must be present");
   assert.equal(rfid.guestVisible,true,"A recognized card must show the linked guest name");
