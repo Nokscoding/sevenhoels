@@ -45,6 +45,11 @@
   +'<button type="button" id="sevenRfidCardLock" class="outline">Démarrer le lecteur</button></div>'
   +'<p id="sevenRfidHandoffStatus" class="seven-rfid-native-result" role="status" aria-live="polite">'
   +'Posez une carte sur le lecteur, choisissez le client et cliquez sur « Créer la carte ».</p>'
+  +'<section id="sevenRfidCardDetails" class="seven-rfid-read-card" hidden aria-live="polite">'
+  +'<div class="seven-rfid-read-head"><div><span class="overline">LECTURE DU BADGE</span><h3 id="sevenRfidReadTitle">Informations de la carte</h3></div><span id="sevenRfidReadStatus" class="seven-rfid-read-state"></span></div>'
+  +'<p id="sevenRfidReadNotice" class="seven-rfid-read-notice"></p>'
+  +'<div id="sevenRfidReadFields" class="seven-rfid-read-fields"></div>'
+  +'</section>'
   +'<p class="hint">Pour une carte perdue, prévenez le responsable : la suppression dans Seven ne bloque pas automatiquement une ancienne carte sur une serrure hors ligne.</p>'
   +'</div>';
  page.insertBefore(panel,page.querySelector(".seven-rfid-intro")||page.firstElementChild);
@@ -67,6 +72,102 @@
   get("sevenRfidBuilding").value=entry?.building||"";
   get("sevenRfidFloor").value=entry?.floor||text(room?.floor||"");
   get("sevenRfidLock").value=entry?.lockNo||"";
+ }
+ function clearRead(){
+  const panel=get("sevenRfidCardDetails");
+  panel.hidden=true;
+  get("sevenRfidReadFields").replaceChildren();
+  get("sevenRfidReadNotice").textContent="";
+ }
+ function formattedDate(value){
+  if(!value)return "—";
+  const v=String(value).trim();
+  // SDK timestamp: YYMMDDHHmm. Do not reinterpret unknown formats.
+  if(/^\d{10}$/.test(v)){
+   const year=2000+Number(v.slice(0,2)),month=Number(v.slice(2,4)),day=Number(v.slice(4,6)),
+    hour=Number(v.slice(6,8)),minute=Number(v.slice(8,10));
+   if(month>=1&&month<=12&&day>=1&&day<=31&&hour<=23&&minute<=59)
+    return String(day).padStart(2,"0")+"/"+String(month).padStart(2,"0")+"/"+year+
+     " à "+String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
+  }
+  const date=/^\d{4}-\d{2}-\d{2}$/.test(v)?new Date(v+"T12:00:00"):new Date(v);
+  return Number.isNaN(date.getTime())?v:date.toLocaleString("fr-FR",{
+   day:"2-digit",month:"2-digit",year:"numeric",
+   ...(v.includes("T")?{hour:"2-digit",minute:"2-digit"}:{})
+  });
+ }
+ function normalizeLock(value){
+  return String(value||"").trim().toUpperCase().replace(/^0+(?=[0-9A-F])/,"");
+ }
+ function showReadDetails(card,client){
+  const panel=get("sevenRfidCardDetails");
+  panel.hidden=false;
+  const fields=get("sevenRfidReadFields");
+  fields.replaceChildren();
+  const add=(label,value,important=false)=>{
+   const item=document.createElement("div");
+   item.className="seven-rfid-read-field"+(important?" seven-rfid-read-important":"");
+   const heading=document.createElement("span");
+   heading.textContent=label;
+   const content=document.createElement("strong");
+   content.textContent=String(value??"—")||"—";
+   item.append(heading,content);fields.append(item);
+  };
+  const type=String(card.type||"").toUpperCase();
+  const isBlank=type==="F",isGuest=type==="6";
+  const found=client?.ok===true&&client?.found===true&&isGuest;
+  const room=found?(roomById(client.roomId)||ctx?.rooms?.find(r=>r.number===client.roomNumber)):null;
+  const location=room&&entryFor(room.id);
+  const lockMismatch=!!(found&&card.lockNo&&location?.lockNo&&
+   normalizeLock(card.lockNo)!==normalizeLock(location.lockNo));
+  const physicallyDecoded=card.decoded===true&&!!card.lockNo&&!!card.expiry;
+  const valid=found&&client.valid===true&&!lockMismatch&&physicallyDecoded;
+  const reasons={
+   revoked:"Carte désactivée dans Seven",expired:"Carte expirée",stay_not_active:"Séjour terminé",
+   unknown_card:"Carte non attribuée",active:"Carte enregistrée",unknown:"Statut à vérifier"
+  };
+  let title="",status="",notice="";
+  if(isBlank){
+   title="Carte vierge";status="Aucun client";
+   notice="Cette carte ne contient pas de carte de chambre active. Vous pouvez l’attribuer à un client.";
+  }else if(!isGuest){
+   title="Carte non-client";status="Non attribuée";
+   notice="Cette carte n’est pas reconnue comme une carte de chambre client. Aucun client ne lui est associé automatiquement.";
+  }else if(found){
+   title=client.guestName||"Dossier du séjour";
+   status=valid?"Carte active":lockMismatch?"Serrure à vérifier":reasons[client.reason]||"À vérifier";
+   notice=client.message||"Informations du client retrouvées dans le registre Seven.";
+   if(!physicallyDecoded&&client.valid===true){
+    notice+=" Le numéro de serrure ou la date de la carte n’a pas pu être vérifié sur le lecteur.";
+   }
+   if(lockMismatch)notice+=" Attention : le numéro de serrure inscrit sur la carte ne correspond pas à celui de la chambre dans Seven.";
+  }else{
+   title="Carte non attribuée";status="Aucun dossier confirmé";
+   notice=client?.message||"Le badge est lisible, mais aucun client n’a été retrouvé dans Seven.";
+  }
+  get("sevenRfidReadTitle").textContent=title;
+  const statusEl=get("sevenRfidReadStatus");
+  statusEl.textContent=status;
+  statusEl.dataset.state=valid?"valid":found?"warning":"unknown";
+  get("sevenRfidReadNotice").textContent=notice;
+  if(found){
+   add("Client",client.guestName||"Non disponible",true);
+   add("Hôtel",ctx?.hotelName||"—");
+   add("Chambre",client.roomNumber||room?.number||"—",true);
+   if(location){
+    add("Bâtiment",location.building);
+    add("Étage",location.floor);
+   }
+   add("Réservation",client.reference||"—");
+   add("Arrivée",formattedDate(client.checkIn));
+   add("Départ",formattedDate(client.checkOut));
+   if(client.guestPhone)add("Téléphone du client",client.guestPhone);
+   add("Fin d’accès enregistrée",formattedDate(client.expiresAt));
+  }
+  add("Numéro de la carte",card.sequence||"Non disponible");
+  add("Type",isBlank?"Vierge":isGuest?"Carte de chambre":"Autre carte");
+  if(card.lockNo)add("Serrure inscrite sur la carte",card.lockNo);
+  if(card.expiry)add("Fin d’accès inscrite sur la carte",formattedDate(card.expiry));
  }
  function canWrite(){
   const booking=bookingById(get("sevenRfidBooking").value);
@@ -187,7 +288,9 @@
      name==="issue"?"Créer maintenant une carte pour la chambre du client sélectionné ?":
      "Effacer définitivement les informations de cette carte client ? Vérifiez qu’il ne s’agit pas d’une carte encore utilisée."))return;
   busy=true;updateButtons();message.dataset.result="pending";
-  message.textContent=name==="read"?"Lecture du badge en cours…":name==="issue"?"Création et vérification de la carte en cours…":"Effacement et relecture en cours…";
+  clearRead();
+  const scannedHotelId=ctx.hotelId;
+  message.textContent=name==="read"?"Lecture de la carte et recherche du client…":name==="issue"?"Création et vérification de la carte en cours…":"Effacement et relecture en cours…";
   const payload={operation:name,userId:ctx.userId,hotelId:ctx.hotelId,roomId,
    port:get("sevenRfidPort").value,expiresAt:get("sevenRfidExpiry").value,
    cardNo:Number(get("sevenRfidCardNo").value),dai:Number(get("sevenRfidDai").value),
@@ -197,8 +300,23 @@
    message.dataset.result=result.ok?"success":"error";
    message.textContent=result.message||"Le moteur RFID n'a pas répondu.";
    if(name==="read"&&result.ok){
-    message.textContent+=" Type : "+(result.type||"inconnu")+", séquence : "+(result.sequence||"—")
-     +(result.lockNo?", serrure : "+result.lockNo:"")+(result.expiry?", expiration : "+result.expiry:"")+".";
+    const isGuest=result.type==="6";
+    let customer=null;
+    if(isGuest&&result.sequence&&scannedHotelId===ctx?.hotelId){
+     customer=await window.SevenRfidLookupCard?.({sequence:result.sequence})||
+      {ok:false,message:"Impossible de rechercher le client pour cette carte."};
+    }
+    if(scannedHotelId!==ctx?.hotelId){
+     message.dataset.result="error";
+     message.textContent="L’établissement a changé pendant la lecture. Relisez la carte.";
+     return;
+    }
+    showReadDetails(result,customer);
+    message.textContent=isGuest
+     ?customer?.found?"Lecture terminée : le dossier du client est affiché ci-dessous."
+      :"Lecture terminée : aucun client confirmé pour cette carte."
+     :result.type==="F"?"Carte vierge reconnue.":"Carte lue. Consultez les informations ci-dessous.";
+    message.dataset.result=customer?.found?"success":isGuest?"warning":"success";
    }
    if(name==="issue"&&result.ok&&result.verified===true&&result.sequence&&stay){
     const recorded=await window.SevenRfidRecordIssued?.({stayId:stay.id,sequence:result.sequence});

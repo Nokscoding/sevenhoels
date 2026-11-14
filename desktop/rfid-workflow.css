@@ -41,3 +41,21 @@
 .seven-rfid-advanced .seven-rfid-workflow-grid{margin-top:12px}
 #sevenRfidIssue{font-weight:750}
 @media(max-width:600px){.seven-rfid-guest-fields{grid-template-columns:1fr}}
+
+/* Résultat de lecture : identité et dossier affichés après scan d'une carte. */
+.seven-rfid-read-card{margin:15px 0 17px;padding:20px 22px;border:1px solid #cfdedc;border-radius:14px;background:#fcfefe;box-shadow:0 6px 25px rgba(14,60,66,.045)}
+.seven-rfid-read-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.seven-rfid-read-head .overline{font-size:10px;letter-spacing:.12em;color:#58817c;font-weight:750}
+.seven-rfid-read-head h3{margin:5px 0 0;font-size:21px;color:#193e45;letter-spacing:-.02em}
+.seven-rfid-read-state{font-size:12px;font-weight:750;padding:7px 12px;border-radius:99px;background:#edf3f3;color:#396a69}
+.seven-rfid-read-state[data-state="valid"]{background:#def2e8;color:#176948}
+.seven-rfid-read-state[data-state="warning"]{background:#fff1d8;color:#855c16}
+.seven-rfid-read-notice{font-size:13px;line-height:1.65;color:#4a6c71;margin:7px 0 17px}
+.seven-rfid-read-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.seven-rfid-read-field{display:flex;flex-direction:column;gap:7px;padding:13px 14px;border:1px solid #e0e9e8;border-radius:9px;background:#f6f9f9;min-width:0}
+.seven-rfid-read-field span{font-size:11px;font-weight:650;color:#638086}
+.seven-rfid-read-field strong{font-size:13px;font-weight:750;color:#233e49;overflow-wrap:anywhere}
+.seven-rfid-read-important{background:#eaf5f1;border-color:#cde3d9}
+.seven-rfid-read-important strong{font-size:16px;color:#125848}
+@media(max-width:920px){.seven-rfid-read-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.seven-rfid-read-card{padding:17px 13px}.seven-rfid-read-fields{grid-template-columns:1fr}}

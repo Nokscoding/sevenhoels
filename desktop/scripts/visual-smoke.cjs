@@ -90,11 +90,12 @@ async function run(){
    'window.SevenRfidContext=()=>({userId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",hotelId:hotel,hotelName:"Seven Test",role:"manager",'+
     'rooms:[{id:room,hotel_id:hotel,number:"131",floor:"1"}],'+
     'stays:[{id:stay,hotel_id:hotel,room_id:room,reference:"TEST",check_in:"2026-11-13",check_out:"2026-11-14",status:"checked_in"}]});'+
+   'window.SevenRfidLookupCard=async()=>({ok:true,found:true,valid:true,reason:"active",guestName:"Marie Exemple",guestPhone:"+243000000000",roomNumber:"131",roomId:room,reference:"SEVEN-DEMO",checkIn:"2026-11-13",checkOut:"2026-11-14",expiresAt:"2026-11-14T11:00:00Z"});'+
    'window.sevenDesktop={'+
     'getRfidRoomLayout:async()=>[{roomId:room,building:"Seven Test",floor:"1",lockNo:"01020A"}],'+
     'saveRfidRoomLayout:async()=>({}),getRfidVendorId:async()=>12345,saveRfidVendorId:async()=>12345,'+
     'getNativeRfidStatus:async()=>({available:true,cardLockReady:true}),'+
-    'runNativeRfid:async payload=>{window.__rfidOps.push(payload.operation);return {ok:true,type:"F",sequence:"FFFFFFFF",message:"Carte vierge reconnue"}},'+
+    'runNativeRfid:async payload=>{window.__rfidOps.push(payload.operation);return {ok:true,type:"6",sequence:"AB12CD34",lockNo:"01020A",expiry:"2611141200",decoded:true,message:"Carte client reconnue"}},'+
     'openRfidCardLock:async()=>({ok:true})};'+
    'await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="./rfid-workflow-ui.js";script.onload=resolve;script.onerror=()=>reject(Error("Inline RFID UI not loadable"));document.body.append(script)});'+
    'await new Promise(resolve=>setTimeout(resolve,130));'+
@@ -103,6 +104,9 @@ async function run(){
    'if(!panel||!read||!issue||read.disabled)throw Error("Native RFID panel unavailable");'+
    'read.click();await new Promise(resolve=>setTimeout(resolve,65));'+
    'return {operations:window.__rfidOps,visible:panel.getBoundingClientRect().height>100,issuePresent:!!issue,'+
+   'guestVisible:document.getElementById("sevenRfidReadTitle")?.textContent==="Marie Exemple",'+
+   'roomVisible:document.getElementById("sevenRfidReadFields")?.textContent.includes("131"),'+
+   'cardVisible:!document.getElementById("sevenRfidCardDetails").hidden,'+
     'warning:panel.textContent.includes("lecteur"),'+
     'separateStudio:panel.textContent.includes("Ouvrir Seven RFID Studio"),'+
     'overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};})()',true
@@ -110,11 +114,26 @@ async function run(){
   assert.deepEqual(rfid.operations,["read"],"Reading must invoke the inline native bridge");
   assert.equal(rfid.visible,true,"Native RFID panel must be visible");
   assert.equal(rfid.issuePresent,true,"Native encode button must be present");
+  assert.equal(rfid.guestVisible,true,"A recognized card must show the linked guest name");
+  assert.equal(rfid.roomVisible,true,"A recognized card must show the linked room");
+  assert.equal(rfid.cardVisible,true,"Scanned client details must be visible");
   assert.equal(rfid.warning,true,"The reception screen must show how to start the reader");
   assert.equal(rfid.separateStudio,false,"No separate Studio launch UI");
   assert.ok(rfid.overflow<=3,"Native RFID panel must not overflow the desktop");
   await fs.writeFile(path.join(output,"Seven-Gestion-RFID-Inline.png"),(await win.webContents.capturePage()).toPNG());
   console.log("Seven inline RFID UI validated:",JSON.stringify(rfid));
+  // A subsequent readable but unregistered card must NEVER inherit the previous guest's name.
+  const unknown=await win.webContents.executeJavaScript(
+   '(async function(){'+
+   'window.SevenRfidLookupCard=async()=>({ok:true,found:false,valid:false,reason:"unknown_card",message:"Carte non attribuée"});'+
+   'document.getElementById("sevenRfidRead").click();'+
+   'await new Promise(resolve=>setTimeout(resolve,95));'+
+   'return {title:document.getElementById("sevenRfidReadTitle").textContent,'+
+   'details:document.getElementById("sevenRfidReadFields").textContent};})()',true
+  );
+  assert.equal(unknown.title,"Carte non attribuée","Unknown card must be shown as unassigned");
+  assert.equal(unknown.details.includes("Marie Exemple"),false,"Unknown cards cannot show the prior guest");
+
 
   // Mount the real production updater UI with a safe fake read-only bridge.
   // Do not send any booking or authentication requests during this test.

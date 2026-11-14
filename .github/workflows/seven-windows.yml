@@ -104,7 +104,7 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Installer absent" }
           if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
           if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
-          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Seven Gestion 1.0 : accueil des clients sur place, attribution des chambres, enregistrement des arrivées et création de cartes de chambre directement dans Seven. Gestion des bâtiments, étages et serrures. La création d’une carte exige une confirmation et une vérification après écriture. CardLock doit rester ouvert en arrière-plan pour le lecteur S18."
+          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Seven Gestion 1.0.1 : la lecture d’une carte de chambre affiche désormais son client associé, la chambre, l’établissement, les dates du séjour, les informations de la carte et son statut. Les informations du client proviennent du dossier Seven et ne sont pas supposées être écrites dans la carte. Une carte inconnue reste non attribuée. CardLock doit toujours être ouvert pour le lecteur S18."
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
         if: always()

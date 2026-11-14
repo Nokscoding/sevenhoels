@@ -16,6 +16,15 @@ const build=await read("desktop/scripts/build.mjs");
 const main=await read("desktop/main.cjs");
 const preload=await read("desktop/preload.cjs");
 const rfidReader=await read("erp/rfid-reader.js");
+const rfidReadUi=await read("desktop/rfid-workflow-ui.js");
+assert.doesNotThrow(()=>new Function(rfidReadUi),"L'affichage des détails de la carte doit être valide");
+for(const key of ["SevenRfidLookupCard","seven_rfid_verify","guest_name","room_number","card_uid_hash"]){
+ if(key!=="card_uid_hash"&&key!=="room_number")assert.ok(app.includes(key),"Recherche du dossier RFID absente : "+key);
+}
+for(const key of ["sevenRfidCardDetails","showReadDetails","SevenRfidLookupCard","guestName","roomNumber"]){
+ assert.ok(rfidReadUi.includes(key),"Affichage du client après lecture absent : "+key);
+}
+
 assert.doesNotThrow(()=>new Function(rfidReader),"Diagnostic RFID doit être syntaxiquement valide");
 
 for(const [name,src] of [["ERP",app],["Notifications",notices],["Mode local",offline],["Processus Windows",main],["Pont IPC",preload]]){
