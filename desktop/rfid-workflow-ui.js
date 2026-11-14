@@ -24,7 +24,8 @@
   +'<label>Version du lecteur<input id="sevenRfidReaderVersion" maxlength="48" placeholder="proUSB-V9-20171130"></label>'
   +'<label>Connexion SDK<select id="sevenRfidReaderPort"><option value="Port1">Port principal</option><option value="Port2">Port secondaire</option></select></label>'
   +'<button type="submit" class="outline">Enregistrer le lecteur de cet hôtel</button>'
-  +'</form><p id="sevenRfidReaderMessage" class="hint" role="status"></p></section>'
+  +'</form><button type="button" id="sevenRfidChooseVendor" class="outline">Choisir le CardLock qui fonctionne</button>'
+  +'<p id="sevenRfidReaderMessage" class="hint" role="status"></p></section>'
   +'<div class="seven-rfid-section" id="sevenRfidConfiguration">'
   +'<h3>Paramètres des chambres et des serrures</h3>'
   +'<form id="sevenRfidVendorForm" class="seven-rfid-vendor-form">'
@@ -95,6 +96,7 @@
    ?"Lecteur proUSB V9.27C du Seven 71 · encodeur 2922 · cartes RF57 (type 57). Seven lance le logiciel propre à cet hôtel ; connectez-vous dans sa fenêtre avant de lire ou créer des cartes."
    :"Le lecteur du Seven 47 garde sa configuration déjà opérationnelle. Chaque hôtel possède des paramètres distincts.";
   get("sevenRfidReaderForm").hidden=!manager();
+  get("sevenRfidChooseVendor").hidden=!special||!manager();
   for(const [id,value] of [
    ["sevenRfidReaderDriver",profile.driver],["sevenRfidEncoderNo",profile.encoderNo],
    ["sevenRfidCardType",profile.cardType],["sevenRfidReaderVersion",profile.dllVersion],
@@ -313,6 +315,17 @@
    get("sevenRfidDeviceStatus").textContent="Le lecteur est momentanément indisponible.";
   }
  }
+ get("sevenRfidChooseVendor").addEventListener("click",async()=>{
+  if(!ctx||!manager()||!specialReader()||typeof api.chooseProUsb71!=="function")return;
+  const button=get("sevenRfidChooseVendor"),notice=get("sevenRfidReaderMessage");
+  button.disabled=true;notice.textContent="Choisissez CardLock.exe dans le dossier qui ouvre réellement les chambres du Seven 71.";
+  try{
+   const result=await api.chooseProUsb71({userId:ctx.userId,hotelId:ctx.hotelId});
+   notice.textContent=result.message||(result.ok?"Installation du Seven 71 enregistrée.":"Sélection refusée.");
+   if(result.ok)await deviceStatus();
+  }catch(error){notice.textContent=error?.message||"Impossible de sélectionner CardLock.";}
+  finally{button.disabled=false;}
+ });
  get("sevenRfidReaderForm").addEventListener("submit",async event=>{
   event.preventDefault();
   if(!ctx||!manager())return;
