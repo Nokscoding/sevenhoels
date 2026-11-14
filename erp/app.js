@@ -318,6 +318,53 @@ window.SevenRfidRecordIssued=async ({stayId,sequence})=>{
   return {ok:false,message:"Badge physiquement vérifié, mais registre non synchronisé : "+String(error?.message||"erreur").slice(0,110)};
  }
 };
+// Identifie le propriétaire d'un badge lu physiquement, sans supposer que
+// le nom est stocké dans la puce. Le numéro est recherché par la fonction
+// sécurisée de Seven (empreinte côté serveur, périmètre de l'hôtel).
+window.SevenRfidLookupCard=async ({sequence})=>{
+ const hotelId=state.hotelId,uid=String(sequence||"").trim().toUpperCase();
+ if(!window.sevenDesktop||!sb||!state.user||!canHandle()||!hotelId)
+  return {ok:false,found:false,message:"Accès à la réception nécessaire pour retrouver le client."};
+ if(!/^[A-F0-9]{8}$/.test(uid)||uid==="FFFFFFFF")
+  return {ok:false,found:false,message:"Numéro de carte client non reconnu."};
+ if(!navigator.onLine)
+  return {ok:false,found:false,message:"Le dossier client est indisponible hors connexion. La carte a bien été lue, mais son attribution ne peut pas être confirmée."};
+ try{
+  const verified=await sb.rpc("seven_rfid_verify",{p_hotel_id:hotelId,p_uid:uid});
+  if(verified.error)throw verified.error;
+  if(hotelId!==state.hotelId)return {ok:false,found:false,message:"L'hôtel actif a changé. Relisez la carte."};
+  const card=verified.data||{};
+  if(!card.found)return {ok:true,found:false,valid:false,reason:"unknown_card",message:"Carte reconnue, mais aucun séjour n'est associé à ce badge dans Seven."};
+  const info={
+   ok:true,found:true,valid:card.valid===true,reason:String(card.reason||"unknown"),
+   roomNumber:String(card.room_number||""),reference:String(card.reference||""),
+   expiresAt:String(card.expires_at||""),guestName:"",guestPhone:"",
+   checkIn:"",checkOut:"",roomId:"",stayStatus:"",message:""
+  };
+  // Les détails du client restent soumis aux autorisations existantes
+  // sur les réservations de l'établissement.
+  if(info.reference){
+   const record=await sb.from("reservations")
+    .select("id,hotel_id,room_id,reference,guest_name,guest_phone,check_in,check_out,status")
+    .eq("hotel_id",hotelId).eq("reference",info.reference).maybeSingle();
+   if(hotelId!==state.hotelId)return {ok:false,found:false,message:"L'hôtel actif a changé. Relisez la carte."};
+   if(record.error){
+    info.message="Carte retrouvée, mais les informations personnelles du client ne sont pas accessibles.";
+   }else if(record.data&&record.data.hotel_id===hotelId&&String(record.data.reference)===info.reference){
+    const stay=record.data;
+    info.guestName=String(stay.guest_name||"");
+    info.guestPhone=String(stay.guest_phone||"");
+    info.checkIn=String(stay.check_in||"");
+    info.checkOut=String(stay.check_out||"");
+    info.roomId=String(stay.room_id||"");
+    info.stayStatus=String(stay.status||"");
+   }
+  }
+  return info;
+ }catch(error){
+  return {ok:false,found:false,message:"Impossible de consulter le dossier client pour cette carte. Vérifiez la connexion ou les autorisations."};
+ }
+};
 window.SevenRfidContext=()=>{
  if(!state.user||!state.hotelId||!canHandle())return null;
  return {
