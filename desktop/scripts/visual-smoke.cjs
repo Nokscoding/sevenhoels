@@ -94,6 +94,7 @@ async function run(){
    'window.sevenDesktop={'+
     'getRfidRoomLayout:async()=>[{roomId:room,building:"Seven Test",floor:"1",lockNo:"01020A"}],'+
     'saveRfidRoomLayout:async()=>({}),getRfidVendorId:async()=>12345,saveRfidVendorId:async()=>12345,'+
+    'getRfidReaderProfile:async()=>null,saveRfidReaderProfile:async data=>data,'+
     'getNativeRfidStatus:async()=>({available:true,cardLockReady:true}),'+
     'runNativeRfid:async payload=>{window.__rfidOps.push(payload.operation);return {ok:true,type:"6",sequence:"AB12CD34",lockNo:"01020A",expiry:"2611141200",decoded:true,message:"Carte client reconnue"}},'+
     'openRfidCardLock:async()=>({ok:true}),playRfidSound:async kind=>{window.__rfidSounds.push(kind)}};'+
@@ -136,6 +137,32 @@ async function run(){
   assert.equal(unknown.title,"Carte non attribuée","Unknown card must be shown as unassigned");
   assert.equal(unknown.details.includes("Marie Exemple"),false,"Unknown cards cannot show the prior guest");
 
+
+  // Switching hotels must never expose the P50 write/erase buttons for Seven 71.
+  const differentEncoder=await win.webContents.executeJavaScript(
+   '(async function(){'+
+   'const hotel="e5555555-5555-4555-8555-555555555555",room="f6666666-6666-4666-8666-666666666666";'+
+   'window.SevenRfidContext=()=>({userId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",hotelId:hotel,hotelName:"Seven 71",role:"manager",'+
+     'rooms:[{id:room,hotel_id:hotel,number:"201",floor:"2"}],stays:[]});'+
+   'window.sevenDesktop.getRfidReaderProfile=async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});'+
+   'window.dispatchEvent(new Event("seven:rfid-context"));'+
+   'await new Promise(resolve=>setTimeout(resolve,140));'+
+   'return {title:document.getElementById("sevenRfidReaderTitle").textContent,'+
+    'encoder:document.getElementById("sevenRfidEncoderNo").value,'+
+    'cardType:document.getElementById("sevenRfidCardType").value,'+
+    'issueDisabled:document.getElementById("sevenRfidIssue").disabled,'+
+    'eraseDisabled:document.getElementById("sevenRfidErase").disabled,'+
+    'readEnabled:!document.getElementById("sevenRfidRead").disabled,'+
+    'warning:document.getElementById("sevenRfidReaderInfo").textContent};})()',true
+  );
+  assert.ok(differentEncoder.title.includes("71"),"Seven 71 must have its own reader profile");
+  assert.equal(differentEncoder.encoder,"2922","Seven 71 encoder metadata must remain distinct");
+  assert.equal(differentEncoder.cardType,"57","Seven 71 card family must remain distinct");
+  assert.equal(differentEncoder.issueDisabled,true,"Different card technology must not be written by Seven 47 SDK");
+  assert.equal(differentEncoder.eraseDisabled,true,"Different card technology must not be erased by Seven 47 SDK");
+  assert.equal(differentEncoder.readEnabled,true,"A read-only diagnostic must be available");
+  assert.ok(differentEncoder.warning.includes("compatibilité"),"Missing warning about unverified SDK compatibility");
+  console.log("Seven 71 independent reader profile validated.");
 
   // Mount the real production updater UI with a safe fake read-only bridge.
   // Do not send any booking or authentication requests during this test.
