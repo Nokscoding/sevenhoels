@@ -104,9 +104,10 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
    if(profile?.driver==="pro-usb-v9"&&input.operation!=="read")
     return {ok:false,message:"Le lecteur du Seven 71 utilise une autre famille de cartes. Écriture et effacement désactivés tant que la compatibilité du matériel et du SDK n'est pas confirmée."};
    if(profile?.driver==="pro-usb-v9"){
-    // Read-only diagnostic: never launch the globally configured CardLock for another hotel.
-    const running=await studio.status();
-    if(!running.servicePort)return {ok:false,message:"Ouvrez le CardLock du Seven 71 sur ce PC avant de lancer une lecture. N'utilisez pas celui du Seven 47."};
+    // Read-only diagnostic: do not launch or trust the globally configured
+    // CardLock service (it may belong to the Seven 47 installation).
+    // Only the manufacturer DLL's own USB initialization can decide
+    // whether this different reader is understood.
    }else if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
    const vendorHotelId=await layout.getVendorId({userId:input.userId,hotelId:input.hotelId});
    if(input.operation!=="read"&&!vendorHotelId)
