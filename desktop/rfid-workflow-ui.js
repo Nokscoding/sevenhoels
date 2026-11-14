@@ -302,10 +302,10 @@
   try{
    const data=await api.getNativeRfidStatus();
    const ready=data.readerReady===undefined?!!data.cardLockReady:!!data.readerReady;
-   get("sevenRfidDeviceStatus").textContent=!data.available?"Le lecteur est indisponible. Vérifiez l’installation de Seven sur Windows."
+   get("sevenRfidDeviceStatus").textContent=data.message||(!data.available?"Le lecteur est indisponible. Vérifiez l’installation de Seven sur Windows."
     :ready?"Lecteur connecté et prêt."
     :data.cardLockReady?"Le logiciel du lecteur est ouvert, mais le S18 ne répond pas. Vérifiez le câble USB."
-    :"Le lecteur n’est pas encore prêt. Cliquez sur « Démarrer le lecteur ».";
+    :"Le lecteur n’est pas encore prêt. Cliquez sur « Démarrer le lecteur ».");
    if(ready&&!readerWasReady)api.playRfidSound?.("connected").catch(()=>{});
    readerWasReady=ready;
   }catch{
