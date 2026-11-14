@@ -73,7 +73,7 @@ internal static class Bridge {
   foreach(char c in s)if(!Uri.IsHexDigit(c))return false;
   return true;
  }
- static ReaderCard Read(string stage="card"){
+ static ReaderCard Read(string stage="card",bool rf57=false){
   Mark(stage);
   byte[] b=new byte[4096];for(int i=0;i<b.Length;i++)b[i]=0xA5;
   int rc=Vendor.ReadCard(1,b);
@@ -87,10 +87,19 @@ internal static class Bridge {
   if(same){c.Message="Réponse USB répétitive non valide.";return c;}
   c.Valid=true;c.Sequence=c.Data.Substring(24,8);
   if(c.Sequence.Equals("FFFFFFFF",StringComparison.OrdinalIgnoreCase))c.Type="F";
-  else{
+  else if(rf57){
+   // The manufacturer's Delphi 7 SDK (Unit1.pas, Guest LockNo/ETime
+   // examples) classifies guest cards by copy(bufCard,25,1)='6'.
+   // OEM proUSB V9.27C may terminate the helper in GetCardTypeByCardDataStr
+   // without returning anything. Use only this documented byte of an
+   // already verified 551501... ReadCard payload, never guess a card type.
+   Mark("type");
+   char kind=Char.ToUpperInvariant(c.Data[24]);
+   c.Type=Uri.IsHexDigit(kind)?kind.ToString():"";
+  }else{
    Mark("type");
    byte[] buf=new byte[64];int tr=Vendor.GetCardType(c.Data,buf);
-   if(tr==0){string s=Decode(buf);if(s.Length>0)c.Type=s.Substring(0,1).ToUpperInvariant();}
+   if(tr==0){string typeText=Decode(buf);if(typeText.Length>0)c.Type=typeText.Substring(0,1).ToUpperInvariant();}
   }
   c.Message="Badge reconnu.";return c;
  }
@@ -104,7 +113,9 @@ internal static class Bridge {
   };
   if(card.Valid&&card.Type=="6"&&hotel>0){
    byte[] lockNumber=new byte[128],expiry=new byte[128];
+   Mark("guestlock");
    int lr=Vendor.GetGuestLockNo(hotel,card.Data,lockNumber);
+   Mark("guestexpiry");
    int er=Vendor.GetGuestExpiry(hotel,card.Data,expiry);
    if(lr==0)result["lockNo"]=Decode(lockNumber).Trim();
    if(er==0)result["expiry"]=Decode(expiry).Trim();
@@ -118,7 +129,9 @@ internal static class Bridge {
  static bool VerifiedGuest(ReaderCard card,int hotel,string lockNo,string expiry) {
   if(!card.Valid||card.Type!="6")return false;
   byte[] lockNumber=new byte[128],expiryOut=new byte[128];
+  Mark("guestlock");
   int lr=Vendor.GetGuestLockNo(hotel,card.Data,lockNumber);
+  Mark("guestexpiry");
   int er=Vendor.GetGuestExpiry(hotel,card.Data,expiryOut);
   return lr==0&&er==0&&Normalize(Decode(lockNumber))==Normalize(lockNo)
       &&Decode(expiryOut).Trim()==expiry;
@@ -205,7 +218,7 @@ internal static class Bridge {
     catch(EntryPointNotFoundException){return Error("Le SDK installé ne possède pas la lecture RF57/T5557. Utilisez les DLL du Seven 71.");}
     catch(InvalidOperationException error){return Error(error.Message);}
    }
-   ReaderCard before=Read();
+   ReaderCard before=Read(rf57:family=="rf57");
    if(operation=="read"){
     if(before.Valid)SoundReader(18);
     var result=Info(before,hotel);
@@ -225,7 +238,7 @@ internal static class Bridge {
     if(Vendor.GetGuestLockNo(hotel,before.Data,currentLock)!=0)
      return Error("La carte ne correspond pas à l'identifiant du Seven 71 : effacement annulé.");
    }
-   ReaderCard check=Read("repeat");
+   ReaderCard check=Read("repeat",family=="rf57");
    if(!check.Valid||check.Data!=before.Data)return Error("La carte a été retirée ou remplacée : opération annulée.");
    if(family=="rf57"&&rf57Id!=null){
     try {
@@ -238,7 +251,7 @@ internal static class Bridge {
     int erased=Vendor.CardErase(1,hotel,output);
     if(erased!=0)return Error("CardErase a refusé l'effacement, code "+erased,erased);
     Thread.Sleep(300);
-    ReaderCard after=Read("verify");
+    ReaderCard after=Read("verify",family=="rf57");
     bool blank=after.Valid&&after.Type=="F";
     if(family=="rf57"&&rf57Id!=null){
      try{blank=blank&&ReadRF57CardId()==rf57Id;}
@@ -264,7 +277,7 @@ internal static class Bridge {
    int issued=Vendor.GuestCard(1,hotel,(byte)number,(byte)dai,0,0,begin,expiry,lockNo,output);
    if(issued!=0)return Error("GuestCard a refusé l'écriture, code "+issued,issued);
    Thread.Sleep(300);
-   ReaderCard verify=Read("verify");
+   ReaderCard verify=Read("verify",family=="rf57");
    bool verified=VerifiedGuest(verify,hotel,lockNo,expiry);
    if(family=="rf57"&&rf57Id!=null){
     try{verified=verified&&ReadRF57CardId()==rf57Id;}

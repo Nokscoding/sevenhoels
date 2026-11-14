@@ -62,6 +62,8 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
     "id":"Lecture de l'identifiant matériel de la carte",
     "card":"Lecture des données de la carte",
     "type":"Identification du type de carte",
+    "guestlock":"Décodage de la serrure du badge CLIENT",
+    "guestexpiry":"Décodage de la date d'expiration du badge CLIENT",
     "repeat":"Vérification de la même carte",
     "write":"Écriture de la carte CLIENT",
     "erase":"Effacement de la carte CLIENT",
