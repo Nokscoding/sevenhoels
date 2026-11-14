@@ -35,12 +35,14 @@
   +'<p class="hint">Il s’agit de l’identifiant de votre hôtel dans le logiciel des serrures. Attention : le numéro d’encodeur 2922 du Seven 71 n’est pas cet identifiant.</p>'
   +'<form id="sevenRfidLockForm" class="seven-rfid-workflow-grid" autocomplete="off">'
   +'<label>Chambre Seven<select id="sevenRfidRoom" required></select></label>'
+  +'<label>Lock Number du fabricant (6 caractères)<input id="sevenRfidLock" maxlength="6" pattern="[0-9A-Fa-f]{6}" required placeholder="01020A"></label>'
+  +'<details class="seven-rfid-advanced"><summary>Emplacement de la chambre (facultatif)</summary>'
   +'<label>Bâtiment<input id="sevenRfidBuilding" maxlength="60" required placeholder="Seven 71"></label>'
-  +'<label>Étage<input id="sevenRfidFloor" maxlength="30" required placeholder="1"></label>'
-  +'<label>Code de la serrure (6 caractères)<input id="sevenRfidLock" maxlength="6" pattern="[0-9A-Fa-f]{6}" required placeholder="01020A"></label>'
+  +'<label>Étage<input id="sevenRfidFloor" maxlength="30" required placeholder="Rez-de-chaussée"></label></details>'
   +'<button class="primary" type="submit" id="sevenRfidSaveLock">Enregistrer la serrure</button>'
-  +'</form><p id="sevenRfidLockStatus" class="hint" role="status"></p>'
+  +'</form><p class="hint">Associez chaque chambre Seven à son Lock Number exact, une seule fois. Le numéro sur la porte peut être différent du code fabricant.</p><p id="sevenRfidLockStatus" class="hint" role="status"></p>'
   +'<div id="sevenRfidLayoutRows" class="seven-rfid-workflow-list"></div></div>'
+  +'<p class="hint">Initialisation d’une serrure uniquement : trois passages de la System Card puis la carte CLIENT correspondant à la chambre. Pour les arrivées suivantes, créez simplement la carte dans Seven Gestion.</p>'
   +'<div class="seven-rfid-handoff"><h3>Remettre la carte au client</h3>'
   +'<label>Client déjà arrivé<select id="sevenRfidBooking"></select></label>'
   +'<div id="sevenRfidCardSummary" class="seven-rfid-card-summary" role="status" aria-live="polite"></div>'
@@ -116,7 +118,7 @@
  function setLockFields(){
   const room=roomById(get("sevenRfidRoom").value),entry=room&&entryFor(room.id);
   get("sevenRfidBuilding").value=entry?.building||ctx?.hotelName||"";
-  get("sevenRfidFloor").value=entry?.floor||text(room?.floor||"");
+  get("sevenRfidFloor").value=entry?.floor||text(room?.floor||"Rez-de-chaussée");
   get("sevenRfidLock").value=entry?.lockNo||"";
  }
  function clearRead(){
