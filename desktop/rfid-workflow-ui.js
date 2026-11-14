@@ -374,6 +374,8 @@
    const result=await api.runNativeRfid(payload);
    message.dataset.result=result.ok?"success":"error";
    message.textContent=result.message||"Le moteur RFID n'a pas répondu.";
+   if(name==="read"&&specialReader()&&!result.ok)
+    message.textContent+=" Le lecteur Seven 71 n’est pas encore reconnu par ce pilote. Il faudra les DLL/SDK de son fabricant pour finaliser la compatibilité.";
    if(name==="read"&&result.ok)api.playRfidSound?.("read").catch(()=>{});
    if(name==="issue"&&result.ok&&result.verified===true)api.playRfidSound?.("written").catch(()=>{});
    if(name==="read"&&result.ok){
