@@ -161,6 +161,14 @@ else{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidLayout.put(payload);
   });
+  ipcMain.handle("seven:rfid-profile-read",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidLayout.getReaderProfile(payload);
+  });
+  ipcMain.handle("seven:rfid-profile-save",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidLayout.setReaderProfile(payload);
+  });
   rfidNative=createRfidNativeController({app,studio:rfidStudio,layout:rfidLayout});
   ipcMain.handle("seven:rfid-native-status",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
