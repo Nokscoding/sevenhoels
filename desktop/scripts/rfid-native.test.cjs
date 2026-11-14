@@ -302,3 +302,15 @@ test("normal card read returns SDK JSON after silent RF57 cleanup",async()=>{
  assert.equal(result.type,"6");
  assert.equal(result.sequence,"0123ABCD");
 });
+
+test("Seven 71 RF57 card type is derived from the Delphi SDK 25th character, without unsafe OEM type call",()=>{
+ const fs=require("node:fs");
+ const path=require("node:path");
+ const bridge=fs.readFileSync(path.join(__dirname,"..","rfid-studio","source","SevenRfidBridge.cs"),"utf8");
+ assert.match(bridge,/else if\(rf57\)[\s\S]*?c\.Data\[24\]/);
+ assert.match(bridge,/else\{\s*Mark\("type"\);\s*byte\[\] buf=new byte\[64\];int tr=Vendor\.GetCardType/);
+ assert.match(bridge,/ReaderCard before=Read\(rf57:family=="rf57"\)/);
+ assert.match(bridge,/ReaderCard check=Read\("repeat",family=="rf57"\)/);
+ assert.match(bridge,/ReaderCard verify=Read\("verify",family=="rf57"\)/);
+ assert.match(bridge,/if\(family=="rf57"&&operation=="issue"&&before\.Type!="F"\)/);
+});
