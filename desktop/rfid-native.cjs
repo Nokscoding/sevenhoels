@@ -108,11 +108,10 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
        profile.cardType!=="57"||!/^[0-9]{1,8}$/.test(profile.encoderNo||"")||
        !/^proUSB-V9-[0-9]{8}$/i.test(profile.dllVersion||"")))
     return {ok:false,message:"Le profil du lecteur Seven 71 est incomplet ou ne correspond pas aux cartes RF57."};
-   if(profile?.driver==="pro-usb-v9"){
-    // Read-only diagnostic: do not launch or trust the globally configured
-    // CardLock service (it may belong to the Seven 47 installation).
-    // Only the manufacturer DLL's own USB initialization can decide
-    // whether this different reader is understood.
+   if(legacy){
+    // A global CardLock process/port may belong to Seven 47. Never launch it
+    // for Seven 71. The manufacturer SDK must recognize the actual RF57 card
+    // before any writing or erasure, and the hotel ID must be independently set.
    }else if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
    const vendorHotelId=await layout.getVendorId({userId:input.userId,hotelId:input.hotelId});
    if(input.operation!=="read"&&!vendorHotelId)
