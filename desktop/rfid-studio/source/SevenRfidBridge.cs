@@ -136,8 +136,10 @@ internal static class Bridge {
   if(status!=0)throw new InvalidOperationException(
     "La lecture de l'identifiant RF57 a échoué (code "+status+").");
   string data=Decode(identifier).Trim().ToUpperInvariant();
+  ulong uid;
   if(data.Length<22||!data.StartsWith("550901",StringComparison.Ordinal)
-    ||!Hex(data.Substring(6,16)))throw new InvalidOperationException(
+    ||!ulong.TryParse(data.Substring(6,16),NumberStyles.HexNumber,CultureInfo.InvariantCulture,out uid))
+   throw new InvalidOperationException(
     "Réponse T5557 invalide : entête ou identifiant non conforme au SDK.");
   return data.Substring(6,16);
  }
