@@ -147,6 +147,8 @@ async function run(){
      'stays:[{id:stay,hotel_id:hotel,room_id:room,status:"checked_in",reference:"71-TEST",check_in:"2026-11-14",check_out:"2026-11-15"}]});'+
    'window.sevenDesktop.getRfidRoomLayout=async()=>[{roomId:room,building:"Seven 71",floor:"2",lockNo:"01020A"}];'+
    'window.sevenDesktop.getRfidReaderProfile=async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});'+
+   'window.__manufacturer71Launches=0;window.sevenDesktop.getProUsb71Status=async()=>({ok:true,running:false});'+
+   'window.sevenDesktop.openProUsb71=async()=>{window.__manufacturer71Launches++;return {ok:true,message:"proUSB V9.27C lancé"}};'+
    'window.dispatchEvent(new Event("seven:rfid-context"));'+
    'await new Promise(resolve=>setTimeout(resolve,140));'+
    'const staySelect=document.getElementById("sevenRfidBooking");staySelect.value=stay;staySelect.dispatchEvent(new Event("change"));'+
@@ -157,7 +159,8 @@ async function run(){
     'issueDisabled:document.getElementById("sevenRfidIssue").disabled,'+
     'eraseDisabled:document.getElementById("sevenRfidErase").disabled,'+
     'readEnabled:!document.getElementById("sevenRfidRead").disabled,'+
-    'warning:document.getElementById("sevenRfidReaderInfo").textContent};})()',true
+    'warning:document.getElementById("sevenRfidReaderInfo").textContent,'+
+    'launcherLabel:document.getElementById("sevenRfidCardLock").textContent};})()',true
   );
   assert.ok(differentEncoder.title.includes("71"),"Seven 71 must have its own reader profile");
   assert.equal(differentEncoder.encoder,"2922","Seven 71 encoder metadata must remain distinct");
@@ -166,6 +169,13 @@ async function run(){
   assert.equal(differentEncoder.eraseDisabled,false,"Configured RF57 must show the direct erase-card action");
   assert.equal(differentEncoder.readEnabled,true,"A read-only diagnostic must be available");
   assert.ok(differentEncoder.warning.includes("RF57"),"The Seven 71 interface must display the RF57 card family");
+  assert.ok(differentEncoder.launcherLabel.includes("proUSB V9.27C"),"Seven 71 button must launch the correct proUSB application");
+  const launch71=await win.webContents.executeJavaScript(
+   '(async()=>{document.getElementById("sevenRfidCardLock").click();'+
+   'await new Promise(resolve=>setTimeout(resolve,100));return window.__manufacturer71Launches;})()',true
+  );
+  assert.equal(launch71,1,"Seven 71 launcher must never open the Seven 47 software");
+
   console.log("Seven 71 independent reader profile validated.");
 
   // Mount the real production updater UI with a safe fake read-only bridge.
