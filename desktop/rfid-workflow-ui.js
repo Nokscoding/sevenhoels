@@ -293,7 +293,7 @@
     const vendor=await api.getProUsb71Status?.({userId:ctx?.userId,hotelId:ctx?.hotelId});
     get("sevenRfidDeviceStatus").textContent=!readerProfile
      ?"Enregistrez d'abord le profil du lecteur Seven 71."
-     :vendor?.running?"proUSB V9.27C du Seven 71 est ouvert. Lecteur prêt pour les opérations dans Seven."
+     :vendor?.running?"proUSB V9.27C du Seven 71 est ouvert. Présentez une carte pour vérifier la connexion du lecteur."
      :vendor?.conflict?"Un autre hôtel utilise actuellement le logiciel de serrures. Fermez-le avant de passer au Seven 71."
      :"Démarrez proUSB V9.27C du Seven 71, connectez-vous dans sa fenêtre, puis utilisez les cartes dans Seven.";
    }catch{get("sevenRfidDeviceStatus").textContent="Impossible de vérifier le logiciel proUSB du Seven 71.";}
