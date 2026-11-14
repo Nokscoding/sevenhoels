@@ -92,7 +92,7 @@
   badge.textContent=special?"Lecteur RF57 · T5557":"Configuration habituelle";
   badge.dataset.state=special?"pending":"ready";
   get("sevenRfidReaderInfo").textContent=special
-   ?"Lecteur proUSB V9.27C du Seven 71 · encodeur 2922 · type de carte 57. Seven lance le logiciel propre à cet hôtel ; connectez-vous dans sa fenêtre avant de lire ou créer des cartes."
+   ?"Lecteur proUSB V9.27C du Seven 71 · encodeur 2922 · cartes RF57 (type 57). Seven lance le logiciel propre à cet hôtel ; connectez-vous dans sa fenêtre avant de lire ou créer des cartes."
    :"Le lecteur du Seven 47 garde sa configuration déjà opérationnelle. Chaque hôtel possède des paramètres distincts.";
   get("sevenRfidReaderForm").hidden=!manager();
   for(const [id,value] of [
