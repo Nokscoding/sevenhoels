@@ -55,13 +55,24 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
  }
  function invoke(data){
   return new Promise((resolve)=>{
-   let settled=false,out="",lastStage="",attemptedMutation=false;
+   let settled=false,out="",lastStage="",attemptedMutation=false,stderrPartial="";
    const stages={
     "dll":"Chargement des bibliothèques du fabricant",
     "usb":"Initialisation du lecteur USB",
     "id":"Lecture de l'identifiant matériel de la carte",
     "card":"Lecture des données de la carte",
-    "type":"Identification du type de carte",
+    "readreturned":"Retour de la fonction constructeur ReadCard",
+    "readparsed":"Validation des données brutes de la carte",
+    "type":"Identification du type de carte (étape générale)",
+    "type71":"Identification du type RF57 dans le moteur Seven 71",
+    "type50":"Appel GetCardType du SDK P50",
+    "typeok":"Type de carte extrait",
+    "readok":"Lecture de carte terminée",
+    "info":"Préparation des informations de la carte",
+    "infook":"Informations de la carte préparées",
+    "perform":"Exécution de la requête RFID",
+    "emit":"Émission du résultat RFID vers Seven Gestion",
+    "emitted":"Résultat RFID envoyé",
     "guestlock":"Décodage de la serrure du badge CLIENT",
     "guestexpiry":"Décodage de la date d'expiration du badge CLIENT",
     "repeat":"Vérification de la même carte",
@@ -77,9 +88,14 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
    const timer=setTimeout(()=>{try{child.kill();}catch{}done({ok:false,message:"Le lecteur ne répond plus ; opération interrompue."});},30000);
    child.once("error",()=>done({ok:false,message:"Le moteur natif ne démarre pas."}));
    child.stderr?.on("data",chunk=>{
-    const lines=chunk.toString("utf8").split(/\r?\n/);
+    // stderr chunks may split one marker in two; never lose a diagnostic
+    // milestone because of transport chunk boundaries.
+    stderrPartial+=chunk.toString("utf8");
+    if(stderrPartial.length>2500)stderrPartial=stderrPartial.slice(-1200);
+    const lines=stderrPartial.split(/\r?\n/);
+    stderrPartial=lines.pop()||"";
     for(const line of lines){
-     const found=/SEVEN_STAGE:([a-z]+)/.exec(line);
+     const found=/^SEVEN_STAGE:([a-z0-9]+)$/.exec(line.trim());
      if(found && Object.hasOwn(stages,found[1])){
       lastStage=found[1];
       if(found[1]==="write"||found[1]==="erase")attemptedMutation=true;
@@ -93,15 +109,27 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
    child.once("close",(exitCode,signal)=>{
     if(settled)return;
     try{
+     // The OEM DLL can write its own diagnostic text to stdout. Only
+     // accept a complete JSON object emitted by the native bridge.
      const lines=out.trim().split(/\r?\n/);
-     const parsed=JSON.parse(lines[lines.length-1]);
-     if(!parsed||typeof parsed!=="object"||typeof parsed.ok!=="boolean")
-      throw Error("Invalid bridge response");
+     let parsed=null;
+     for(let i=lines.length-1;i>=0;i--){
+      const candidate=lines[i].trim();
+      if(!candidate.startsWith("{")||!candidate.endsWith("}"))continue;
+      try{
+       const value=JSON.parse(candidate);
+       if(value&&typeof value==="object"&&typeof value.ok==="boolean"){
+        parsed=value;break;
+       }
+      }catch{}
+     }
+     if(!parsed)throw Error("Bridge response missing");
      done({
       ok:parsed.ok,code:Number.isInteger(parsed.code)?parsed.code:-1,
       type:String(parsed.type||"").slice(0,2),sequence:String(parsed.sequence||"").slice(0,16),
       lockNo:String(parsed.lockNo||"").slice(0,12),expiry:String(parsed.expiry||"").slice(0,20),
       verified:parsed.verified===true,decoded:parsed.decoded===true,
+      bridgeBuild:String(parsed.bridgeBuild||"").slice(0,32),
       message:String(parsed.message||"Réponse du SDK reçue.").slice(0,240)
      });
     }catch{
@@ -111,9 +139,12 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
       ?" Une opération d'écriture ou d'effacement a été lancée : retirez la carte et relisez-la avant toute nouvelle tentative."
       :" Aucune écriture signalée pendant cette lecture. La réponse des données n'a pas été reçue.";
      const reason=exitCode===0&&out.trim()===""
-      ?"Le moteur s'est fermé normalement sans transmettre le résultat après : "
+      ?"Le moteur s'est fermé sans transmettre le résultat après : "
+      :out.trim()!==""?"La réponse native n'est pas au format attendu après : "
       :"Moteur RFID interrompu pendant : ";
-     done({ok:false,stage:lastStage||"unknown",message:reason+stage+code+"."+followup});
+     const seen=out.trim()!==""?" (sortie reçue mais non décodable)":" (aucune sortie de résultat)";
+     done({ok:false,stage:lastStage||"unknown",
+      message:reason+stage+code+seen+". Moteur Seven 1.0.12."+followup});
     }
    });
    const json=JSON.stringify(data);
