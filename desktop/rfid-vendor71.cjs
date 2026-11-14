@@ -70,6 +70,29 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   await layout.setVendorProgram({userId,hotelId,programPath:verified.path});
   return verified;
  }
+ // Explicitly bind the already-working hotel database installation, not just an
+ // executable with a matching version. Do not copy or edit System.ini / CardLock.MDB.
+ async function choose({userId,hotelId}){
+  if(platform!=="win32")return {ok:false,message:"La sélection du logiciel de serrures nécessite Windows."};
+  const profile=await layout.getReaderProfile({userId,hotelId});
+  if(profile?.driver!=="pro-usb-v9")
+   return {ok:false,message:"Configurez d'abord le lecteur Seven 71 comme proUSB V9."};
+  const selected=await dialog.showOpenDialog(getWindow(),{
+   title:"Sélectionner le CardLock fonctionnel du Seven 71",
+   filters:[{name:"Logiciel proUSB V9.27C",extensions:["exe"]}],
+   properties:["openFile"]
+  });
+  if(selected.canceled||!selected.filePaths?.length)return {ok:false,cancelled:true,message:"Sélection annulée."};
+  const verified=await verifyInstallation(selected.filePaths[0],files);
+  if(!verified.ok)return verified;
+  const processes=await runningPaths();
+  if(processes===null)return {ok:false,message:"Impossible de vérifier le logiciel CardLock déjà ouvert. Fermez-le et réessayez."};
+  if(processes.some(p=>clean(p)!==clean(verified.path)))
+   return {ok:false,message:"Un autre CardLock est ouvert. Fermez-le avant de choisir l'installation fonctionnelle du Seven 71."};
+  await layout.setVendorProgram({userId,hotelId,programPath:verified.path});
+  return {ok:true,configured:true,path:verified.path,
+   message:"Installation fonctionnelle du Seven 71 enregistrée sur ce poste, sans modifier les données du fabricant."};
+ }
  async function state({userId,hotelId}){
   if(platform!=="win32")return {ok:false,message:"Disponible uniquement sous Windows."};
   const profile=await layout.getReaderProfile({userId,hotelId});
@@ -129,6 +152,6 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
   if(result.ok&&!result.running)return {ok:false,message:"Ouvrez d'abord proUSB V9.27C de Seven 71 avec le bouton « Démarrer le lecteur », puis connectez-vous."};
   return result;
  }
- return {state,launch,ensureRunning,guardLegacy};
+ return {state,launch,choose,ensureRunning,guardLegacy};
 }
 module.exports={createProUsb71Launcher,verifyProUsb71,PROUSB71_SHA256,PRORFL_SHA256};

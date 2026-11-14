@@ -181,6 +181,10 @@ else{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidVendor71.state(payload);
   });
+  ipcMain.handle("seven:rfid-vendor71-select",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidVendor71.choose(payload);
+  });
   ipcMain.handle("seven:rfid-native-status",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidNative.status();

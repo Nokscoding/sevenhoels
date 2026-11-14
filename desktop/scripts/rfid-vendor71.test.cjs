@@ -94,3 +94,25 @@ test("Seven 47 is blocked only while the verified Seven 71 manufacturer program 
  const normal=setup({running:[wrong]});
  assert.equal((await normal.launcher.guardLegacy()).ok,true);
 });
+
+test("explicit selection binds the working Seven 71 installation without touching the hotel database",async()=>{
+ const t=setup({installed:wrong,selection:correct,running:[]});
+ const result=await t.launcher.choose({userId,hotelId});
+ assert.equal(result.ok,true);
+ assert.equal(result.configured,true);
+ assert.equal(result.path,correct);
+ assert.equal(t.launches.length,0,"selection must never launch or mutate CardLock");
+ assert.equal(t.saved.length,1);
+ assert.equal(t.saved[0].programPath,correct);
+});
+test("explicit selection rejects a wrong executable and an incompatible running CardLock",async()=>{
+ const invalid=setup({installed:correct,selection:wrong,running:[]});
+ const denied=await invalid.launcher.choose({userId,hotelId});
+ assert.equal(denied.ok,false);
+ assert.equal(invalid.saved.length,0);
+ const conflict=setup({installed:correct,selection:correct,running:[wrong]});
+ const blocked=await conflict.launcher.choose({userId,hotelId});
+ assert.equal(blocked.ok,false);
+ assert.match(blocked.message,/autre CardLock/);
+ assert.equal(conflict.saved.length,0);
+});
