@@ -44,3 +44,25 @@ test("manufacturer hotel number shared locally and encrypted",async()=>{
  assert.equal(getBlob().includes(Buffer.from("654321")),false);
  await assert.rejects(store.setVendorId({userId:u1,hotelId:hotel,vendorHotelId:-2}),/invalide/);
 });
+
+test("Seven 71 stores different encoder and card type without overwriting Seven 47",async()=>{
+ const {store,getBlob}=fixture();
+ const hotel71="e5555555-5555-4555-8555-555555555555";
+ await store.setVendorId({userId:u1,hotelId:hotel,vendorHotelId:48231});
+ assert.equal(await store.getReaderProfile({userId:u1,hotelId:hotel}),null);
+ const saved=await store.setReaderProfile({userId:u1,hotelId:hotel71,
+  driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});
+ assert.equal(saved.encoderNo,"2922");
+ assert.equal(saved.cardType,"57");
+ assert.deepEqual(await store.getReaderProfile({userId:room2,hotelId:hotel71}),saved);
+ assert.equal(await store.getReaderProfile({userId:u1,hotelId:hotel}),null);
+ assert.equal(await store.getVendorId({userId:u1,hotelId:hotel}),48231);
+ assert.equal(await store.getVendorId({userId:u1,hotelId:hotel71}),null);
+ assert.equal(getBlob().includes(Buffer.from("proUSB-V9-20171130")),false);
+});
+test("rejects unrecognized reader families and malformed encoders",async()=>{
+ const {store}=fixture();
+ const body={userId:u1,hotelId:hotel,port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"};
+ await assert.rejects(store.setReaderProfile({...body,driver:"arbitrary-dll"}),/non reconnue/);
+ await assert.rejects(store.setReaderProfile({...body,driver:"pro-usb-v9",encoderNo:"../../"}),/invalides/);
+});
