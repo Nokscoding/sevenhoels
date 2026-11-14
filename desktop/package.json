@@ -1,6 +1,6 @@
 {
   "name": "seven-gestion-desktop",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "Seven Gestion — application complète de réception et de gestion hôtelière",
   "main": "main.cjs",
@@ -10,8 +10,8 @@
     "prepare:renderer": "node scripts/build.mjs",
     "start": "npm run prepare:renderer && electron .",
     "dist:win": "npm run prepare:renderer && electron-builder --win nsis --publish never",
-    "check": "node --check main.cjs && node --check updates.cjs && node --check preload.cjs && node --check offline.js && node --check update-ui.js && node --check scripts/build.mjs && node --check rfid-native.cjs && node --check rfid-layout.cjs && node --check rfid-workflow-ui.js && node --check rfid-studio.cjs && node --check rfid-studio-ui.js && node --check scripts/build-rfid.mjs",
-    "test": "node scripts/smoke.mjs && node scripts/updater.test.cjs && node scripts/rfid-studio.test.cjs && node scripts/rfid-layout.test.cjs && node scripts/rfid-native.test.cjs",
+    "check": "node --check main.cjs && node --check updates.cjs && node --check preload.cjs && node --check offline.js && node --check update-ui.js && node --check scripts/build.mjs && node --check rfid-vendor71.cjs && node --check rfid-native.cjs && node --check rfid-layout.cjs && node --check rfid-workflow-ui.js && node --check rfid-studio.cjs && node --check rfid-studio-ui.js && node --check scripts/build-rfid.mjs",
+    "test": "node scripts/smoke.mjs && node scripts/updater.test.cjs && node scripts/rfid-studio.test.cjs && node scripts/rfid-layout.test.cjs && node scripts/rfid-native.test.cjs && node scripts/rfid-vendor71.test.cjs",
     "dist:release": "npm run prepare:renderer && electron-builder --win nsis --publish always",
     "test:layout": "electron scripts/visual-smoke.cjs"
   },
@@ -34,6 +34,7 @@
     "files": [
       "main.cjs",
       "updates.cjs",
+      "rfid-vendor71.cjs",
       "rfid-native.cjs",
       "rfid-layout.cjs",
       "rfid-studio.cjs",
