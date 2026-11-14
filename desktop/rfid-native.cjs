@@ -17,6 +17,11 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
  async function exists(){try{return (await files.stat(executable)).isFile();}catch{return false;}}
  async function status(){
   const available=platform==="win32"&&await exists();
+  const guard=available?await manufacturer71?.guardLegacy?.():null;
+  if(guard&&!guard.ok){
+   readerReady=false;
+   return {supported:true,available,cardLockReady:false,readerReady:false,busy,message:guard.message};
+  }
   const service=available?await studio.status():null;
   const cardLockReady=!!service?.servicePort;
   if(!cardLockReady){
