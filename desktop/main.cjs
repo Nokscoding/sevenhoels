@@ -212,12 +212,16 @@ else{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidStudio.status();
   });
-  ipcMain.handle("seven:rfid-studio-open",event=>{
+  ipcMain.handle("seven:rfid-studio-open",async event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
+   const guard=await rfidVendor71.guardLegacy();
+   if(!guard.ok)return guard;
    return rfidStudio.openStudio();
   });
-  ipcMain.handle("seven:rfid-cardlock-open",event=>{
+  ipcMain.handle("seven:rfid-cardlock-open",async event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
+   const guard=await rfidVendor71.guardLegacy();
+   if(!guard.ok)return guard;
    return rfidStudio.openCardLock();
   });
   createWindow();
