@@ -5,6 +5,7 @@ const {createUpdateController}=require("./updates.cjs");
 const {createRfidStudioController}=require("./rfid-studio.cjs");
 const {createRfidLayoutStore}=require("./rfid-layout.cjs");
 const {createRfidNativeController}=require("./rfid-native.cjs");
+const {createProUsb71Launcher}=require("./rfid-vendor71.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const {pathToFileURL} = require("node:url");
@@ -18,6 +19,7 @@ let updateController;
 let rfidStudio;
 let rfidLayout;
 let rfidNative;
+let rfidVendor71;
 
 protocol.registerSchemesAsPrivileged([{
  scheme:SCHEME,privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true,corsEnabled:true}
@@ -169,7 +171,16 @@ else{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidLayout.setReaderProfile(payload);
   });
-  rfidNative=createRfidNativeController({app,studio:rfidStudio,layout:rfidLayout});
+  rfidVendor71=createProUsb71Launcher({app,layout:rfidLayout,dialog,getWindow:()=>mainWindow});
+  rfidNative=createRfidNativeController({app,studio:rfidStudio,layout:rfidLayout,manufacturer71:rfidVendor71});
+  ipcMain.handle("seven:rfid-vendor71-open",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidVendor71.launch(payload);
+  });
+  ipcMain.handle("seven:rfid-vendor71-status",(event,payload)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   return rfidVendor71.state(payload);
+  });
   ipcMain.handle("seven:rfid-native-status",event=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidNative.status();
