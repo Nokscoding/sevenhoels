@@ -101,8 +101,13 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
    if(probing)await probing;
    if(!await exists())return {ok:false,message:"Moteur RFID intégré absent. Installer la version Windows à jour."};
    const profile=await layout.getReaderProfile?.({userId:input.userId,hotelId:input.hotelId})||null;
-   if(profile?.driver==="pro-usb-v9"&&input.operation!=="read")
-    return {ok:false,message:"Le lecteur du Seven 71 utilise une autre famille de cartes. Écriture et effacement désactivés tant que la compatibilité du matériel et du SDK n'est pas confirmée."};
+   // RF57 (T5557) uses the proUSB V9 SDK family. The bridge performs
+   // its own physical RF57 card check before *any* mutation.
+   const legacy=profile?.driver==="pro-usb-v9";
+   if(legacy&&(
+       profile.cardType!=="57"||!/^\\d{1,8}$/.test(profile.encoderNo||"")||
+       !/^proUSB-V9-[0-9]{8}$/i.test(profile.dllVersion||"")))
+    return {ok:false,message:"Le profil du lecteur Seven 71 est incomplet ou ne correspond pas aux cartes RF57."};
    if(profile?.driver==="pro-usb-v9"){
     // Read-only diagnostic: do not launch or trust the globally configured
     // CardLock service (it may belong to the Seven 47 installation).
@@ -120,6 +125,7 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
     lockNo=found.lockNo;
    }
    return await invoke({operation:input.operation,port:profile?.port|| (input.port==="Port2"?"Port2":"Port1"),
+    readerFamily:legacy?"rf57":"p50",cardType:legacy?"57":"",
     hotelId:vendorHotelId||0,lockNo,
     cardNo:input.operation==="issue"?input.cardNo:0,
     dai:input.operation==="issue"?input.dai:1,
