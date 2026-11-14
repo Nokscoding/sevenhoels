@@ -271,7 +271,7 @@ test("read-only OEM close code 0 never reports that a guest card might have been
   resourcesPath:"C:\\Seven\\resources",spawnProcess});
  const result=await ctrl.execute({operation:"read",userId,hotelId});
  assert.equal(result.ok,false);
- assert.match(result.message,/fermé normalement sans transmettre le résultat/);
+ assert.match(result.message,/fermé sans transmettre le résultat/);
  assert.doesNotMatch(result.message,/carte a peut-être été modifiée|retirez la carte et relisez-la/);
  assert.match(result.message,/Fermeture de la connexion USB/);
 });
