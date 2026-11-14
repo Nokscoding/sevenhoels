@@ -128,12 +128,20 @@ internal static class Bridge {
  static string ReadRF57CardId() {
   byte[] identifier=new byte[4096];
   int status=Vendor.ReadCardID_T5557(1,identifier);
+  // Some verified OEM cards return 1 for their optional immutable T5557 ID,
+  // while the vendor's normal ReadCard API can still decode their card data.
+  // Do NOT treat this as proof of card type; only the OEM ReadCard plus its
+  // explicit blank/guest type and repeat-read checks may permit a mutation.
+  if(status==1)return null;
   if(status!=0)throw new InvalidOperationException(
-    "Carte RF57 non reconnue par le lecteur (code "+status+"). Vérifier le logiciel CardLock du Seven 71.");
-  string data=Decode(identifier).Trim();
-  if(data.Length<4||data.Length>128)throw new InvalidOperationException(
-    "L'identification de la carte RF57 n'a pas retourné de données vérifiables.");
-  return data;
+    "La lecture de l'identifiant RF57 a échoué (code "+status+").");
+  string data=Decode(identifier).Trim().ToUpperInvariant();
+  ulong uid;
+  if(data.Length<22||!data.StartsWith("550901",StringComparison.Ordinal)
+    ||!ulong.TryParse(data.Substring(6,16),NumberStyles.HexNumber,CultureInfo.InvariantCulture,out uid))
+   throw new InvalidOperationException(
+    "Réponse T5557 invalide : entête ou identifiant non conforme au SDK.");
+  return data.Substring(6,16);
  }
  static Dictionary<string,object> Perform(Dictionary<string,object> request) {
   string operation=Str(request,"operation");
@@ -149,9 +157,23 @@ internal static class Bridge {
    return Error("Numéro de l’hôtel et confirmation de l’opération requis.");
   string root=AppDomain.CurrentDomain.BaseDirectory;
   string sdk=Path.Combine(Path.Combine(root,"sdk"),port);
-  if(!Directory.Exists(sdk))return Error("Dossier SDK absent : "+port);
+  if(family=="rf57"){
+   string original=Str(request,"vendorDirectory").Trim();
+   if(original.Length==0||original.Length>320||!Path.IsPathRooted(original))
+    return Error("Dossier CardLock original du Seven 71 non vérifié.");
+   sdk=Path.GetFullPath(original);
+   // The selected path has already passed binary fingerprints and active
+   // process checks in Seven Gestion's privileged Windows main process.
+   if(!File.Exists(Path.Combine(sdk,"CardLock.exe"))
+     ||!File.Exists(Path.Combine(sdk,"System.ini"))
+     ||!File.Exists(Path.Combine(sdk,"CardLock.MDB")))
+    return Error("Installation CardLock du Seven 71 incomplète. Ne modifiez pas sa base.");
+  }
+  if(!Directory.Exists(sdk))return Error("Dossier SDK introuvable.");
   Vendor.SetDllDirectory(sdk);
-  string[] names={"MSVCRTD.DLL","MFC42D.DLL","d12.dll","d12c.dll","AESDIT.dll","Card.dll","proRFL.dll"};
+  string[] names=family=="rf57"
+   ?new string[]{"MSVCRTD.DLL","MFC42D.DLL","d12.dll","d12c.dll","proRFL.dll"}
+   :new string[]{"MSVCRTD.DLL","MFC42D.DLL","d12.dll","d12c.dll","AESDIT.dll","Card.dll","proRFL.dll"};
   foreach(string name in names)if(!File.Exists(Path.Combine(sdk,name))||
       Vendor.LoadLibrary(Path.Combine(sdk,name))==IntPtr.Zero)
     return Error("Bibliothèque fabricant indisponible : "+name);
@@ -175,9 +197,12 @@ internal static class Bridge {
    ReaderCard before=Read();
    if(operation=="read"){
     if(before.Valid)SoundReader(18);
-    return Info(before,hotel);
+    var result=Info(before,hotel);
+    if(family=="rf57"&&before.Valid&&rf57Id==null)
+     result["message"]="Carte lue par le SDK d'origine du Seven 71. Identifiant T5557 facultatif indisponible (code 1).";
+    return result;
    }
-   if(!before.Valid)return Error("Carte non reconnue : impossible de modifier le badge.");
+   if(!before.Valid)return Error("La lecture des données de la carte a échoué (ReadCard code "+before.Code+"). Écriture refusée.");
    if(operation=="erase"&&before.Type!="6")return Error("Seules les cartes de chambre client peuvent être effacées.");
    if(operation=="issue"&&before.Type!="F"&&before.Type!="6")
     return Error("La carte doit être vierge ou être une carte de chambre client.");
@@ -191,7 +216,7 @@ internal static class Bridge {
    }
    ReaderCard check=Read();
    if(!check.Valid||check.Data!=before.Data)return Error("La carte a été retirée ou remplacée : opération annulée.");
-   if(family=="rf57"){
+   if(family=="rf57"&&rf57Id!=null){
     try {
      if(ReadRF57CardId()!=rf57Id)return Error("La carte RF57 a changé pendant l'opération : action annulée.");
     }catch(InvalidOperationException error){return Error(error.Message);}
@@ -203,7 +228,7 @@ internal static class Bridge {
     Thread.Sleep(300);
     ReaderCard after=Read();
     bool blank=after.Valid&&after.Type=="F";
-    if(family=="rf57"){
+    if(family=="rf57"&&rf57Id!=null){
      try{blank=blank&&ReadRF57CardId()==rf57Id;}
      catch(InvalidOperationException){blank=false;}
     }
@@ -228,7 +253,7 @@ internal static class Bridge {
    Thread.Sleep(300);
    ReaderCard verify=Read();
    bool verified=VerifiedGuest(verify,hotel,lockNo,expiry);
-   if(family=="rf57"){
+   if(family=="rf57"&&rf57Id!=null){
     try{verified=verified&&ReadRF57CardId()==rf57Id;}
     catch(InvalidOperationException){verified=false;}
    }

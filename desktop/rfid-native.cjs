@@ -109,6 +109,8 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
    // RF57 (T5557) uses the proUSB V9 SDK family. The bridge performs
    // its own physical RF57 card check before *any* mutation.
    const legacy=profile?.driver==="pro-usb-v9";
+   let verifiedVendorDirectory="";
+
    if(legacy&&(
        profile.cardType!=="57"||!/^[0-9]{1,8}$/.test(profile.encoderNo||"")||
        !/^proUSB-V9-[0-9]{8}$/i.test(profile.dllVersion||"")))
@@ -120,6 +122,12 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
     if(!manufacturer71)return {ok:false,message:"Module de lancement proUSB V9.27C de Seven 71 absent."};
     const vendor=await manufacturer71.ensureRunning({userId:input.userId,hotelId:input.hotelId});
     if(!vendor.ok)return {ok:false,message:vendor.message||"Ouvrez le logiciel proUSB V9.27C du Seven 71."};
+    const active=await manufacturer71.state({userId:input.userId,hotelId:input.hotelId});
+    if(!active.ok||!active.running||!active.path||!path.win32.isAbsolute(active.path))
+     return {ok:false,message:active.message||"L'installation CardLock Seven 71 n'est pas vérifiée sur ce poste."};
+    // This path comes only from the hash-verified, running manufacturer launcher,
+    // never directly from the HTML renderer.
+    verifiedVendorDirectory=path.win32.dirname(active.path);
    }else {
     const exclusive=await manufacturer71?.guardLegacy?.();
     if(exclusive&&!exclusive.ok)return {ok:false,message:exclusive.message};
@@ -137,6 +145,7 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
    }
    return await invoke({operation:input.operation,port:profile?.port|| (input.port==="Port2"?"Port2":"Port1"),
     readerFamily:legacy?"rf57":"p50",cardType:legacy?"57":"",
+    vendorDirectory:legacy?verifiedVendorDirectory:"",
     hotelId:vendorHotelId||0,lockNo,
     cardNo:input.operation==="issue"?input.cardNo:0,
     dai:input.operation==="issue"?input.dai:1,
