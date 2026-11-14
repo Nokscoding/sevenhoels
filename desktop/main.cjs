@@ -1,5 +1,5 @@
 "use strict";
-const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage,dialog} = require("electron");
+const {app,BrowserWindow,ipcMain,protocol,net,session,safeStorage,dialog,shell} = require("electron");
 const {autoUpdater}=require("electron-updater");
 const {createUpdateController}=require("./updates.cjs");
 const {createRfidStudioController}=require("./rfid-studio.cjs");
@@ -169,6 +169,17 @@ else{
   ipcMain.handle("seven:rfid-native-run",(event,payload)=>{
    if(!isLocalSender(event))throw Error("Unauthorized");
    return rfidNative.execute(payload);
+  });
+  // Audible Windows fallback even when the S18 firmware does not expose its buzzer.
+  // Limited to three fixed events: no arbitrary commands from the renderer.
+  ipcMain.handle("seven:rfid-sound",(event,kind)=>{
+   if(!isLocalSender(event))throw Error("Unauthorized");
+   if(!["connected","read","written"].includes(kind))return {ok:false};
+   try{
+    shell.beep();
+    if(kind==="written")setTimeout(()=>{try{shell.beep();}catch{}},220);
+    return {ok:true};
+   }catch{return {ok:false};}
   });
   ipcMain.handle("seven:rfid-vendor-read",(event,payload)=>{
    if(!isLocalSender(event))throw Error("Unauthorized");

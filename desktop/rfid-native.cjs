@@ -13,12 +13,29 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
  pause=ms=>new Promise(resolve=>setTimeout(resolve,ms))}){
  const root=app.isPackaged?path.join(resourcesPath,"rfid-studio"):path.join(__dirname,"rfid-studio","runtime");
  const executable=path.join(root,"SevenRfidBridge.exe");
- let busy=false;
+ let busy=false,readerReady=false,probing=null;
  async function exists(){try{return (await files.stat(executable)).isFile();}catch{return false;}}
  async function status(){
-  const s=await studio.status();
-  return {supported:platform==="win32",available:platform==="win32"&&await exists(),
-   cardLockReady:!!s.servicePort,busy};
+  const available=platform==="win32"&&await exists();
+  const service=available?await studio.status():null;
+  const cardLockReady=!!service?.servicePort;
+  if(!cardLockReady){
+   readerReady=false;
+   return {supported:platform==="win32",available,cardLockReady:false,readerReady:false,busy};
+  }
+  // A listening CardLock port alone does not prove that the USB reader is connected.
+  // Probe the actual vendor USB initialization without reading or writing a card.
+  if(!busy){
+   if(!probing){
+    const beepOnConnection=!readerReady;
+    probing=invoke({operation:"connect",port:"Port1",signal:beepOnConnection})
+     .then(result=>{readerReady=result.ok===true;return readerReady;})
+     .catch(()=>{readerReady=false;return false;})
+     .finally(()=>{probing=null;});
+   }
+   await probing;
+  }
+  return {supported:true,available,cardLockReady:true,readerReady,busy};
  }
  async function waitCardLock(){
   const state=await studio.status();
@@ -80,6 +97,8 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
   }
   busy=true;
   try{
+   // Never let a USB connection check overlap with a physical card operation.
+   if(probing)await probing;
    if(!await exists())return {ok:false,message:"Moteur RFID intégré absent. Installer la version Windows à jour."};
    if(!await waitCardLock())return {ok:false,message:"CardLock doit rester ouvert avant de lire ou encoder."};
    const vendorHotelId=await layout.getVendorId({userId:input.userId,hotelId:input.hotelId});

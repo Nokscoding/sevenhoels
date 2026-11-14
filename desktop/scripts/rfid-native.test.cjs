@@ -68,3 +68,21 @@ test("unconfigured CardLock service blocks writing without invoking the SDK",asy
  assert.equal(response.ok,false);
  assert.equal(t.calls.length,0);
 });
+
+test("connection sound is requested only on first USB connection and after reconnect",async()=>{
+ const t=mock();
+ const first=await t.ctrl.status();
+ assert.equal(first.readerReady,true);
+ assert.equal(t.calls[0].payload.operation,"connect");
+ assert.equal(t.calls[0].payload.signal,true);
+ const second=await t.ctrl.status();
+ assert.equal(second.readerReady,true);
+ assert.equal(t.calls[1].payload.signal,false);
+ t.studio.status=async()=>({servicePort:null});
+ const disconnected=await t.ctrl.status();
+ assert.equal(disconnected.readerReady,false);
+ t.studio.status=async()=>({servicePort:10086});
+ const third=await t.ctrl.status();
+ assert.equal(third.readerReady,true);
+ assert.equal(t.calls[2].payload.signal,true);
+});

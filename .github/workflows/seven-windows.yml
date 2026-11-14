@@ -104,7 +104,7 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Installer absent" }
           if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
           if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
-          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Seven Gestion 1.0.1 : la lecture d’une carte de chambre affiche désormais son client associé, la chambre, l’établissement, les dates du séjour, les informations de la carte et son statut. Les informations du client proviennent du dossier Seven et ne sont pas supposées être écrites dans la carte. Une carte inconnue reste non attribuée. CardLock doit toujours être ouvert pour le lecteur S18."
+          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Seven Gestion 1.0.2 : signal sonore du lecteur connecté, de la lecture et de l’écriture vérifiée. Le S18 reçoit une commande buzzer facultative, avec signal sonore de Windows comme alternative. Les fonctions d’écriture qui marchent et l’ancien moteur Seven RFID Studio 2.2 restent inchangés. CardLock doit toujours être ouvert."
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
         if: always()
