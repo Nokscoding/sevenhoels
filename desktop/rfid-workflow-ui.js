@@ -77,7 +77,10 @@
  const manager=()=>["supervisor","director","manager"].includes(ctx?.role);
  const isHotel71=()=>/(^|[^0-9])71($|[^0-9])/.test(String(ctx?.hotelName||""));
  const specialReader=()=>isHotel71()||readerProfile?.driver==="pro-usb-v9";
- const readerConfigured=()=>!specialReader()||!!readerProfile;
+ const readerConfigured=()=>!specialReader()||!!(
+  readerProfile?.driver==="pro-usb-v9"&&readerProfile?.cardType==="57"
+  &&/^[0-9]{1,8}$/.test(readerProfile?.encoderNo||"")
+ );
  function renderReaderProfile(){
   const special=specialReader(),profile=readerProfile||{
    driver:special?"pro-usb-v9":"p50",
@@ -86,10 +89,10 @@
   };
   get("sevenRfidReaderTitle").textContent="Lecteur de "+(ctx?.hotelName||"cet hôtel");
   const badge=get("sevenRfidReaderBadge");
-  badge.textContent=special?"Compatibilité à confirmer":"Configuration habituelle";
+  badge.textContent=special?"Lecteur RF57 · T5557":"Configuration habituelle";
   badge.dataset.state=special?"pending":"ready";
   get("sevenRfidReaderInfo").textContent=special
-   ?"Lecteur proUSB V9 · encodeur 2922 · type de carte 57. Ces valeurs sont relevées dans le logiciel du fabricant. La lecture reste un diagnostic ; l’écriture et l’effacement sont bloqués tant que la compatibilité avec le SDK du fabricant n’est pas confirmée."
+   ?"Lecteur proUSB V9 · encodeur 2922 · cartes RF57 (T5557). Seven vérifie le type de carte avant la création ou l’effacement, puis contrôle le résultat par une nouvelle lecture. Gardez le CardLock du Seven 71 ouvert."
    :"Le lecteur du Seven 47 garde sa configuration déjà opérationnelle. Chaque hôtel possède des paramètres distincts.";
   get("sevenRfidReaderForm").hidden=!manager();
   for(const [id,value] of [
@@ -209,12 +212,12 @@
  }
  function canWrite(){
   const booking=bookingById(get("sevenRfidBooking").value);
-  return !specialReader()&&!busy&&!!booking&&!!entryFor(booking.room_id)&&!!vendorHotelId&&get("sevenRfidConfirmTest").checked;
+  return (!specialReader()||readerConfigured())&&!busy&&!!booking&&!!entryFor(booking.room_id)&&!!vendorHotelId&&get("sevenRfidConfirmTest").checked;
  }
  function updateButtons(){
   get("sevenRfidRead").disabled=busy||!ctx||(specialReader()&&!readerConfigured());
   get("sevenRfidIssue").disabled=!canWrite();
-  get("sevenRfidErase").disabled=specialReader()||busy||!ctx||!vendorHotelId||!get("sevenRfidConfirmTest").checked;
+  get("sevenRfidErase").disabled=busy||!ctx||!vendorHotelId||(specialReader()&&!readerConfigured())||!get("sevenRfidConfirmTest").checked;
   get("sevenRfidCardLock").disabled=busy||specialReader();
  }
  function renderSummary(){
@@ -228,7 +231,7 @@
    ["Étage",entry?.floor||"Non configuré"],
    ["Code serrure",entry?.lockNo||"Non configuré"],
    ["Arrivée",booking.check_in||"—"],["Départ",booking.check_out||"—"],
-   ["Configuration du lecteur",specialReader()?"Nouveau lecteur : à vérifier":vendorHotelId?"Prête":"À compléter"]
+   ["Configuration du lecteur",specialReader()?(readerConfigured()&&vendorHotelId?"RF57 configuré":"À compléter"):vendorHotelId?"Prête":"À compléter"]
   ];
   for(const [label,value] of fields){
    const row=document.createElement("div"),a=document.createElement("strong"),b=document.createElement("span");
@@ -286,7 +289,7 @@
   if(specialReader()){
    readerWasReady=false;
    get("sevenRfidDeviceStatus").textContent=readerProfile
-    ?"Lecteur Seven 71 configuré séparément. Ouvrez son logiciel CardLock ; la lecture sert uniquement à vérifier la compatibilité."
+    ?"Lecteur Seven 71 RF57 configuré. Ouvrez son CardLock et posez une carte pour lire, créer ou effacer après confirmation."
     :"Sélectionnez Seven 71 et enregistrez le profil de son lecteur avant une lecture.";
    return;
   }
@@ -355,7 +358,6 @@
  async function operation(name){
   if(!ctx||busy)return;
   const stay=bookingById(get("sevenRfidBooking").value),roomId=stay?.room_id;
-  if(specialReader()&&name!=="read")return;
   if(specialReader()&&!readerConfigured())return;
   if(name==="issue"&&!canWrite())return;
   if(name==="erase"&&(busy||!vendorHotelId||!get("sevenRfidConfirmTest").checked))return;
@@ -365,7 +367,7 @@
   busy=true;updateButtons();message.dataset.result="pending";
   clearRead();
   const scannedHotelId=ctx.hotelId;
-  message.textContent=name==="read"?(specialReader()?"Lecture de diagnostic du lecteur Seven 71…":"Lecture de la carte et recherche du client…"):name==="issue"?"Création et vérification de la carte en cours…":"Effacement et relecture en cours…";
+  message.textContent=name==="read"?(specialReader()?"Lecture de la carte RF57 du Seven 71…":"Lecture de la carte et recherche du client…"):name==="issue"?"Création et vérification de la carte en cours…":"Effacement et relecture en cours…";
   const payload={operation:name,userId:ctx.userId,hotelId:ctx.hotelId,roomId,
    port:get("sevenRfidPort").value,expiresAt:get("sevenRfidExpiry").value,
    cardNo:Number(get("sevenRfidCardNo").value),dai:Number(get("sevenRfidDai").value),
@@ -375,7 +377,7 @@
    message.dataset.result=result.ok?"success":"error";
    message.textContent=result.message||"Le moteur RFID n'a pas répondu.";
    if(name==="read"&&specialReader()&&!result.ok)
-    message.textContent+=" Le lecteur Seven 71 n’est pas encore reconnu par ce pilote. Il faudra les DLL/SDK de son fabricant pour finaliser la compatibilité.";
+    message.textContent+=" Vérifiez que CardLock du Seven 71 est ouvert et que la carte est bien une RF57/T5557. Si le lecteur reste incompatible, il faudra ses DLL d’origine." ;
    if(name==="read"&&result.ok)api.playRfidSound?.("read").catch(()=>{});
    if(name==="issue"&&result.ok&&result.verified===true)api.playRfidSound?.("written").catch(()=>{});
    if(name==="read"&&result.ok){

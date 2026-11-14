@@ -87,20 +87,47 @@ test("connection sound is requested only on first USB connection and after recon
  assert.equal(t.calls[2].payload.signal,true);
 });
 
-test("Seven 71 legacy proUSB V9 profile cannot issue or erase through the Seven 47 SDK",async()=>{
+test("Seven 71 RF57 can issue, erase and read through the manufacturer API after profile validation",async()=>{
  const t=mock();
  t.layout.getReaderProfile=async()=>({
   driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});
+ // The native Windows bridge will additionally reject a card that is not
+ // physically recognized as RF57/T5557; mocked successful SDK results do not prove hardware.
  const issue=await t.ctrl.execute({operation:"issue",userId,hotelId,roomId,
   expiresAt:"2026-11-15T12:00",cardNo:0,dai:1,confirmAuthorization:true});
  const erase=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmAuthorization:true});
- assert.equal(issue.ok,false);
- assert.equal(erase.ok,false);
- assert.match(issue.message,/désactivés/);
- assert.deepEqual(t.calls,[]);
+ assert.equal(issue.ok,true);
+ assert.equal(erase.ok,true);
+ assert.equal(t.calls.length,2);
+ assert.equal(t.calls[0].payload.operation,"issue");
+ assert.equal(t.calls[0].payload.readerFamily,"rf57");
+ assert.equal(t.calls[0].payload.cardType,"57");
+ assert.equal(t.calls[0].payload.hotelId,48231);
+ assert.equal(t.calls[0].payload.lockNo,"01020A");
+ assert.equal(t.calls[1].payload.operation,"erase");
+ assert.equal(t.calls[1].payload.readerFamily,"rf57");
+ assert.equal(t.calls[1].payload.hotelId,48231);
  const read=await t.ctrl.execute({operation:"read",userId,hotelId,port:"Port2"});
  assert.equal(read.ok,true);
- assert.equal(t.calls.length,1);
- assert.equal(t.calls[0].payload.operation,"read");
- assert.equal(t.calls[0].payload.port,"Port1");
+ assert.equal(t.calls.length,3);
+ assert.equal(t.calls[2].payload.readerFamily,"rf57");
+ assert.equal(t.calls[2].payload.port,"Port1");
 });
+test("Seven 71 refuses unsupported RF cards, wrong hotel identification and missing consent",async()=>{
+ const t=mock();
+ t.layout.getReaderProfile=async()=>({
+  driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"50",dllVersion:"proUSB-V9-20171130"});
+ const blocked=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmAuthorization:true});
+ assert.equal(blocked.ok,false);
+ assert.equal(t.calls.length,0);
+ t.layout.getReaderProfile=async()=>({
+  driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"});
+ t.layout.getVendorId=async()=>null;
+ const missingHotel=await t.ctrl.execute({operation:"issue",userId,hotelId,roomId,
+  expiresAt:"2026-11-15T12:00",cardNo:0,dai:1,confirmAuthorization:true});
+ assert.equal(missingHotel.ok,false);
+ assert.equal(t.calls.length,0);
+ const noConsent=await t.ctrl.execute({operation:"erase",userId,hotelId,roomId,confirmAuthorization:false});
+ assert.equal(noConsent.ok,false);
+});
+

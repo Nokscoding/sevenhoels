@@ -104,7 +104,7 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Installer absent" }
           if (-not (Test-Path $manifest)) { throw "Manifest latest.yml absent" }
           if (-not (Test-Path $blockmap)) { throw "Blockmap absent" }
-          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Seven Gestion 1.0.3 : configuration indépendante des lecteurs des hôtels Seven 47 et Seven 71. Les détails du nouvel encodeur (proUSB-V9-20171130, numéro 2922, type de carte 57) peuvent être enregistrés séparément du lecteur P50 déjà opérationnel. Lecture de diagnostic disponible pour Seven 71, mais écriture/effacement protégés en attendant la confirmation de compatibilité du SDK du fabricant. Aucun changement des écritures qui fonctionnent pour Seven 47."
+          gh release create "v$version" "$installer" "$manifest" "$blockmap" --target "$env:GITHUB_SHA" --title "Seven Gestion v$version" --notes "Seven Gestion 1.0.4 : prise en charge des opérations lecture, création de carte client et effacement pour le lecteur RF57/T5557 de Seven 71. Vérification physique du type RF57 avant toute modification ; validation de l'hôtel, de la serrure et relecture après action. Seven 47 conserve ses paramètres et commandes RFID fonctionnels. La compatibilité réelle doit être contrôlée avec le CardLock et les cartes du Seven 71."
           if ($LASTEXITCODE -ne 0) { throw "GitHub draft release failed" }
       - name: Upload test installer artifacts
         if: always()
