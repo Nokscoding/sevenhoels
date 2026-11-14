@@ -105,7 +105,7 @@ function createRfidNativeController({app,studio,layout,files=fs,spawnProcess=spa
    // its own physical RF57 card check before *any* mutation.
    const legacy=profile?.driver==="pro-usb-v9";
    if(legacy&&(
-       profile.cardType!=="57"||!/^\\d{1,8}$/.test(profile.encoderNo||"")||
+       profile.cardType!=="57"||!/^[0-9]{1,8}$/.test(profile.encoderNo||"")||
        !/^proUSB-V9-[0-9]{8}$/i.test(profile.dllVersion||"")))
     return {ok:false,message:"Le profil du lecteur Seven 71 est incomplet ou ne correspond pas aux cartes RF57."};
    if(profile?.driver==="pro-usb-v9"){
