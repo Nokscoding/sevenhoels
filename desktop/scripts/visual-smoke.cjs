@@ -122,6 +122,18 @@ async function run(){
   assert.ok(rfid.overflow<=3,"Native RFID panel must not overflow the desktop");
   await fs.writeFile(path.join(output,"Seven-Gestion-RFID-Inline.png"),(await win.webContents.capturePage()).toPNG());
   console.log("Seven inline RFID UI validated:",JSON.stringify(rfid));
+  // A subsequent readable but unregistered card must NEVER inherit the previous guest's name.
+  const unknown=await win.webContents.executeJavaScript(
+   '(async function(){'+
+   'window.SevenRfidLookupCard=async()=>({ok:true,found:false,valid:false,reason:"unknown_card",message:"Carte non attribuée"});'+
+   'document.getElementById("sevenRfidRead").click();'+
+   'await new Promise(resolve=>setTimeout(resolve,95));'+
+   'return {title:document.getElementById("sevenRfidReadTitle").textContent,'+
+   'details:document.getElementById("sevenRfidReadFields").textContent};})()',true
+  );
+  assert.equal(unknown.title,"Carte non attribuée","Unknown card must be shown as unassigned");
+  assert.equal(unknown.details.includes("Marie Exemple"),false,"Unknown cards cannot show the prior guest");
+
 
   // Mount the real production updater UI with a safe fake read-only bridge.
   // Do not send any booking or authentication requests during this test.
