@@ -89,7 +89,7 @@
   badge.textContent=special?"Compatibilité à confirmer":"Configuration habituelle";
   badge.dataset.state=special?"pending":"ready";
   get("sevenRfidReaderInfo").textContent=special
-   ?"Lecteur proUSB V9 · encodeur 2922 · type de carte 57. Ces valeurs sont relevées dans le logiciel du fabricant. La lecture reste un diagnostic ; l’écriture et l’effacement ne sont pas activés sans SDK compatible."
+   ?"Lecteur proUSB V9 · encodeur 2922 · type de carte 57. Ces valeurs sont relevées dans le logiciel du fabricant. La lecture reste un diagnostic ; l’écriture et l’effacement sont bloqués tant que la compatibilité avec le SDK du fabricant n’est pas confirmée."
    :"Le lecteur du Seven 47 garde sa configuration déjà opérationnelle. Chaque hôtel possède des paramètres distincts.";
   get("sevenRfidReaderForm").hidden=!manager();
   for(const [id,value] of [
