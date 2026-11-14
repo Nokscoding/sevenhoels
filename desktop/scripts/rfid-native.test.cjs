@@ -244,6 +244,61 @@ test("interrupted write warns to reread the same card before attempting again",a
  const result=await ctrl.execute({operation:"issue",userId,hotelId,roomId,
   expiresAt:"2026-11-16T12:00",cardNo:0,dai:2,confirmAuthorization:true});
  assert.equal(result.ok,false);
- assert.match(result.message,/peut-être été modifiée/);
+ assert.match(result.message,/écriture ou d.effacement a été lancée/);
  assert.match(result.message,/relisez-la/);
+});
+
+test("read-only OEM close code 0 never reports that a guest card might have been written",async()=>{
+ const studio={status:async()=>({servicePort:10086}),openCardLock:async()=>({ok:true})};
+ const layout={getVendorId:async()=>48231,get:async()=>[],
+  getReaderProfile:async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"})};
+ const spawnProcess=()=>{
+  const child=new EventEmitter();
+  child.stdout=new PassThrough();
+  child.stderr=new PassThrough();
+  child.kill=()=>{};
+  child.stdin=new PassThrough();
+  child.stdin.on("data",()=>queueMicrotask(()=>{
+   child.stderr.emit("data",Buffer.from("SEVEN_STAGE:card\nSEVEN_STAGE:close\n"));
+   child.emit("close",0,null);
+  }));
+  return child;
+ };
+ const ctrl=createRfidNativeController({app:{isPackaged:true},studio,layout,
+  manufacturer71:{ensureRunning:async()=>({ok:true,running:true}),
+   state:async()=>({ok:true,running:true,path:"D:\\Seven71\\CardLock.exe"})},
+  files:{stat:async()=>({isFile:()=>true})},platform:"win32",
+  resourcesPath:"C:\\Seven\\resources",spawnProcess});
+ const result=await ctrl.execute({operation:"read",userId,hotelId});
+ assert.equal(result.ok,false);
+ assert.match(result.message,/fermé normalement sans transmettre le résultat/);
+ assert.doesNotMatch(result.message,/carte a peut-être été modifiée|retirez la carte et relisez-la/);
+ assert.match(result.message,/Fermeture de la connexion USB/);
+});
+test("normal card read returns SDK JSON after silent RF57 cleanup",async()=>{
+ const studio={status:async()=>({servicePort:10086}),openCardLock:async()=>({ok:true})};
+ const layout={getVendorId:async()=>48231,get:async()=>[],
+  getReaderProfile:async()=>({driver:"pro-usb-v9",port:"Port1",encoderNo:"2922",cardType:"57",dllVersion:"proUSB-V9-20171130"})};
+ const spawnProcess=()=>{
+  const child=new EventEmitter();
+  child.stdout=new PassThrough();
+  child.stderr=new PassThrough();
+  child.kill=()=>{};
+  child.stdin=new PassThrough();
+  child.stdin.on("data",()=>queueMicrotask(()=>{
+   child.stderr.emit("data",Buffer.from("SEVEN_STAGE:card\n"));
+   child.stdout.emit("data",Buffer.from('{"ok":true,"code":0,"type":"6","sequence":"0123ABCD","message":"Badge reconnu."}\n'));
+   child.emit("close",0,null);
+  }));
+  return child;
+ };
+ const ctrl=createRfidNativeController({app:{isPackaged:true},studio,layout,
+  manufacturer71:{ensureRunning:async()=>({ok:true,running:true}),
+   state:async()=>({ok:true,running:true,path:"D:\\Seven71\\CardLock.exe"})},
+  files:{stat:async()=>({isFile:()=>true})},platform:"win32",
+  resourcesPath:"C:\\Seven\\resources",spawnProcess});
+ const result=await ctrl.execute({operation:"read",userId,hotelId});
+ assert.equal(result.ok,true);
+ assert.equal(result.type,"6");
+ assert.equal(result.sequence,"0123ABCD");
 });

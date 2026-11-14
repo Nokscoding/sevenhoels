@@ -55,7 +55,7 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
  }
  function invoke(data){
   return new Promise((resolve)=>{
-   let settled=false,out="",lastStage="";
+   let settled=false,out="",lastStage="",attemptedMutation=false;
    const stages={
     "dll":"Chargement des bibliothèques du fabricant",
     "usb":"Initialisation du lecteur USB",
@@ -78,7 +78,10 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
     const lines=chunk.toString("utf8").split(/\r?\n/);
     for(const line of lines){
      const found=/SEVEN_STAGE:([a-z]+)/.exec(line);
-     if(found && Object.hasOwn(stages,found[1]))lastStage=found[1];
+     if(found && Object.hasOwn(stages,found[1])){
+      lastStage=found[1];
+      if(found[1]==="write"||found[1]==="erase")attemptedMutation=true;
+     }
     }
    });
    child.stdout.on("data",data=>{
@@ -101,12 +104,14 @@ function createRfidNativeController({app,studio,layout,manufacturer71=null,files
      });
     }catch{
      const stage=stages[lastStage]||"Démarrage du moteur RFID";
-     const danger=["write","erase","verify","close"].includes(lastStage);
      const code=Number.isInteger(exitCode)?" (Windows 0x"+(exitCode>>>0).toString(16).toUpperCase()+")":signal?" (processus interrompu)":"";
-     const followup=danger
-      ?" La carte a peut-être été modifiée : retirez-la et relisez-la avant toute nouvelle écriture."
-      :" Aucune écriture confirmée. Vérifiez le lecteur et l'installation d'origine.";
-     done({ok:false,stage:lastStage||"unknown",message:"Moteur RFID interrompu pendant : "+stage+code+"."+followup});
+     const followup=attemptedMutation
+      ?" Une opération d'écriture ou d'effacement a été lancée : retirez la carte et relisez-la avant toute nouvelle tentative."
+      :" Aucune écriture signalée pendant cette lecture. La réponse des données n'a pas été reçue.";
+     const reason=exitCode===0&&out.trim()===""
+      ?"Le moteur s'est fermé normalement sans transmettre le résultat après : "
+      :"Moteur RFID interrompu pendant : ";
+     done({ok:false,stage:lastStage||"unknown",message:reason+stage+code+"."+followup});
     }
    });
    const json=JSON.stringify(data);

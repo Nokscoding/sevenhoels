@@ -276,7 +276,14 @@ internal static class Bridge {
        ?"Carte client créée ; chambre et date de fin vérifiées."
        :"GuestCard retourne 0 mais la relecture ne confirme pas le contenu. Gardez la carte et relisez-la."}};
   }finally{
-   try{Mark("close");Vendor.CloseUSB(1);}catch{}
+   // The original proUSB V9.27C CloseUSB implementation can terminate this
+   // *one-shot* bridge with exit code 0 before Main has written its JSON.
+   // The operating system releases process-owned USB handles at exit.
+   // Do not call the OEM shutdown function in the short-lived RF57 helper;
+   // leave the existing P50 lifecycle unchanged.
+   if(family!="rf57"){
+    try{Mark("close");Vendor.CloseUSB(1);}catch{}
+   }
   }
  }
  public static int Main(string[] args) {
