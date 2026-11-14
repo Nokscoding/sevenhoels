@@ -1,6 +1,6 @@
 {
   "name": "seven-gestion-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Seven Gestion — application complète de réception et de gestion hôtelière",
   "main": "main.cjs",
