@@ -48,12 +48,12 @@ function getCardLockProcessPaths(){
 }
 function createProUsb71Launcher({app,layout,dialog,getWindow,
  platform=process.platform,files=fs,spawnProcess=spawn,
- runningPaths=getCardLockProcessPaths,installPaths=DEFAULT_INSTALLS}){
+ runningPaths=getCardLockProcessPaths,verifyInstallation=verifyProUsb71,installPaths=DEFAULT_INSTALLS}){
  async function find({userId,hotelId,ask=false}){
   const stored=await layout.getVendorProgram({userId,hotelId});
-  if(stored&&(await verifyProUsb71(stored,files)).ok)return {ok:true,path:stored};
+  if(stored&&(await verifyInstallation(stored,files)).ok)return {ok:true,path:stored};
   for(const candidate of installPaths){
-   if((await verifyProUsb71(candidate,files)).ok){
+   if((await verifyInstallation(candidate,files)).ok){
     await layout.setVendorProgram({userId,hotelId,programPath:candidate});
     return {ok:true,path:candidate};
    }
@@ -65,7 +65,7 @@ function createProUsb71Launcher({app,layout,dialog,getWindow,
    properties:["openFile"]
   });
   if(picked.canceled||!picked.filePaths?.length)return {ok:false,cancelled:true};
-  const verified=await verifyProUsb71(picked.filePaths[0],files);
+  const verified=await verifyInstallation(picked.filePaths[0],files);
   if(!verified.ok)return verified;
   await layout.setVendorProgram({userId,hotelId,programPath:verified.path});
   return verified;
