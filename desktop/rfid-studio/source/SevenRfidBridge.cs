@@ -77,6 +77,7 @@ internal static class Bridge {
   Mark(stage);
   byte[] b=new byte[4096];for(int i=0;i<b.Length;i++)b[i]=0xA5;
   int rc=Vendor.ReadCard(1,b);
+  Mark("readreturned");
   ReaderCard c=new ReaderCard();c.Code=rc;c.Data=Decode(b);
   if(rc!=0){c.Message="Erreur de lecture du SDK : "+rc;return c;}
   if(!Hex(c.Data)||!c.Data.StartsWith("551501",StringComparison.OrdinalIgnoreCase)){
@@ -86,6 +87,7 @@ internal static class Bridge {
   for(int i=2;i<c.Data.Length;i+=2)if(c.Data.Substring(i,2)!=first){same=false;break;}
   if(same){c.Message="Réponse USB répétitive non valide.";return c;}
   c.Valid=true;c.Sequence=c.Data.Substring(24,8);
+  Mark("readparsed");
   if(c.Sequence.Equals("FFFFFFFF",StringComparison.OrdinalIgnoreCase))c.Type="F";
   else if(rf57){
    // The manufacturer's Delphi 7 SDK (Unit1.pas, Guest LockNo/ETime
@@ -94,20 +96,25 @@ internal static class Bridge {
    // without returning anything. Use only this documented byte of an
    // already verified 551501... ReadCard payload, never guess a card type.
    Mark("type");
+   Mark("type71");
    char kind=Char.ToUpperInvariant(c.Data[24]);
    c.Type=Uri.IsHexDigit(kind)?kind.ToString():"";
+   Mark("typeok");
   }else{
    Mark("type");
+   Mark("type50");
    byte[] buf=new byte[64];int tr=Vendor.GetCardType(c.Data,buf);
    if(tr==0){string typeText=Decode(buf);if(typeText.Length>0)c.Type=typeText.Substring(0,1).ToUpperInvariant();}
+   Mark("typeok");
   }
-  c.Message="Badge reconnu.";return c;
+  c.Message="Badge reconnu.";Mark("readok");return c;
  }
  static string Normalize(string s){
   if(s==null)return "";s=s.Trim().ToUpperInvariant();
   int pos=0;while(pos<s.Length-1&&s[pos]=='0')pos++;return s.Substring(pos);
  }
  static Dictionary<string,object> Info(ReaderCard card,int hotel) {
+  Mark("info");
   var result=new Dictionary<string,object>{
    {"ok",card.Valid},{"code",card.Code},{"type",card.Type},{"sequence",card.Sequence},{"message",card.Message}
   };
@@ -121,6 +128,7 @@ internal static class Bridge {
    if(er==0)result["expiry"]=Decode(expiry).Trim();
    result["decoded"]=lr==0&&er==0;
   }
+  Mark("infook");
   return result;
  }
  static Dictionary<string,object> Error(string message,int rc=-1){
@@ -307,8 +315,14 @@ internal static class Bridge {
    if(input==null||input.Length>4096)throw new InvalidOperationException("Requête absente ou trop longue.");
    var request=Json.Deserialize<Dictionary<string,object>>(input);
    if(request==null)throw new InvalidOperationException("Requête incorrecte.");
+   Mark("perform");
    var result=Perform(request);
-   Console.WriteLine(Json.Serialize(result));return result.ContainsKey("ok")&&(bool)result["ok"]?0:1;
+   result["bridgeBuild"]="rf57-trace-1.0.12";
+   Mark("emit");
+   Console.WriteLine(Json.Serialize(result));
+   Console.Out.Flush();
+   Mark("emitted");
+   return result.ContainsKey("ok")&&(bool)result["ok"]?0:1;
   }catch(Exception e){
    // Never emit card data, hotel credentials, or filesystem path in error text.
    Console.WriteLine(Json.Serialize(Error(e is InvalidOperationException?
